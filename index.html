@@ -545,42 +545,38 @@ function renderFront(ctx,x,y,mw,lsp,p,H,data){
   dtx(ctx,'课题  '+data.title,x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs}px ${ff}`;
   dtx(ctx,'课型：'+data.type,x,cy,ink,pj,sj);cy+=lsp;
-  // Separator line
-  ctx.strokeStyle=ink;ctx.lineWidth=0.5;ctx.globalAlpha=0.4;
-  ctx.beginPath();ctx.moveTo(x,cy-2);ctx.lineTo(x+mw,cy-2);ctx.stroke();
-  ctx.globalAlpha=1;cy+=lsp*0.5;
 
   // Teaching goals
   ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学目标',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs-1}px ${ff}`;
   const goalLines=wrapText(data.goals,mw-10,ctx);
   for(const l of goalLines){
-    if(cy>H-40){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
-    dtx(ctx,l,x+8,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
+    if(cy>H-35)return;
+    dtx(ctx,l,x+6,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
   }
-  cy+=lsp*0.3;
+  cy+=lsp*0.25;
 
   // Keypoints
   ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学重难点',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs-1}px ${ff}`;
   const kpLines=wrapText(data.keypoints,mw-10,ctx);
   for(const l of kpLines){
-    if(cy>H-40){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
-    dtx(ctx,l,x+8,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
+    if(cy>H-35)return;
+    dtx(ctx,l,x+6,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
   }
-  cy+=lsp*0.3;
+  cy+=lsp*0.25;
 
   // Teaching process
   ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学过程',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs}px ${ff}`;
   for(const raw of data.front_content.split('\n')){
-    const s=raw.trim();if(!s){cy+=lsp*0.25;continue;}
-    if(cy>H-30){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+    const s=raw.trim();if(!s){cy+=lsp*0.2;continue;}
+    if(cy>H-25)return;
     const hd=/^[一二三四五六七八九十]+[、，,.]/.test(s);
     const sub=/^（?\d+[）)]/.test(s);
-    const indent=hd?0:(sub?12:8);
+    const indent=hd?0:(sub?10:6);
     for(const l of wrapText(s,mw-indent,ctx)){
-      if(cy>H-30){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+      if(cy>H-20)return;
       ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
       dtx(ctx,l,x+indent,cy,ink,pj,sj);cy+=lsp;
     }
@@ -593,30 +589,27 @@ function renderBack(ctx,x,y,mw,lsp,p,H,data){
   const{fs,ff,ink,posJitter:pj,strokeJitter:sj}=p;
   let cy=y;
 
-  ctx.font=`bold ${fs}px ${ff}`;
-  dtx(ctx,'（续前页）',x,cy,ink,pj,sj);cy+=lsp*1.2;
-
+  // No "续前页" - content flows directly from front, like real scanned docs
   const lines=data.back_content.split('\n');
   for(const raw of lines){
     const s=raw.trim();
-    if(!s){cy+=lsp*0.25;continue;}
-    if(cy>H-30){dtx(ctx,'（完）',x,cy,ink,pj,sj);return;}
+    if(!s){cy+=lsp*0.2;continue;}
+    if(cy>H-25)return;
 
-    // Section headers - bold but NO box, just like real handwritten docs
-    const isSection=/^(板书设计|课后反思|教学反思|板书|教后反思|作业设计)/.test(s);
-    const isHeading=/^[五六七八九十][、，,.]/.test(s);
-    
+    // Section headers - bold only, NO box, like real handwriting
+    const isSection=/^(板书设计|课后反思|教学反思|板书|教后反思|作业设计)/.test(s)&&s.length<15;
     if(isSection){
-      cy+=lsp*0.3; // small gap before section
       ctx.font=`bold ${fs}px ${ff}`;
       dtx(ctx,s,x,cy,ink,pj,sj);cy+=lsp;
       ctx.font=`${fs}px ${ff}`;
       continue;
     }
 
-    const indent=isHeading?0:8;
+    const isHeading=/^[五六七八九十][、，,.]/.test(s);
+    const isSub=/^（?\d+[）)]/.test(s);
+    const indent=isHeading?0:(isSub?10:6);
     for(const l of wrapText(s,mw-indent,ctx)){
-      if(cy>H-30){dtx(ctx,'（完）',x,cy,ink,pj,sj);return;}
+      if(cy>H-20)return;
       ctx.font=isHeading?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
       dtx(ctx,l,x+indent,cy,ink,pj,sj);cy+=lsp;
     }

@@ -366,36 +366,31 @@ def render_front(lesson, hw):
     keypoints = lesson.get('keypoints', '')
     content = lesson.get('front_content', '')
 
-    # Title
+    # Title line: "课题  17.跳水" then "课型：新授课" on same visual area
     hw.draw_line(draw, f'课题  {title}', x, y, max_w, font=hw.font_b)
     y += lsp
     hw.draw_line(draw, f'课型：{lesson_type}', x, y, max_w)
     y += lsp
-    # Subtle separator
-    draw.line([(x, y - 2), (x + max_w, y - 2)], fill=(*hw.style.ink_rgb[:3], 100), width=1)
-    y += int(lsp * 0.4)
 
     # Goals
     hw.draw_line(draw, '教学目标', x, y, max_w, font=hw.font_b)
     y += lsp
-    for line in hw.wrap(goals, max_w - 12):
-        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 30:
-            hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
-            break
-        hw.draw_line(draw, line, x + 8, y, max_w - 12)
+    for line in hw.wrap(goals, max_w - 10):
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 25:
+            break  # No "续背面" marker - content flows naturally
+        hw.draw_line(draw, line, x + 6, y, max_w - 10)
         y += int(lsp * 0.85)
-    y += int(lsp * 0.3)
+    y += int(lsp * 0.25)
 
     # Keypoints
     hw.draw_line(draw, '教学重难点', x, y, max_w, font=hw.font_b)
     y += lsp
-    for line in hw.wrap(keypoints, max_w - 12):
-        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 30:
-            hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
+    for line in hw.wrap(keypoints, max_w - 10):
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 25:
             break
-        hw.draw_line(draw, line, x + 8, y, max_w - 12)
+        hw.draw_line(draw, line, x + 6, y, max_w - 10)
         y += int(lsp * 0.85)
-    y += int(lsp * 0.3)
+    y += int(lsp * 0.25)
 
     # Teaching process
     hw.draw_line(draw, '教学过程', x, y, max_w, font=hw.font_b)
@@ -405,14 +400,15 @@ def render_front(lesson, hw):
         if not stripped:
             y += int(lsp * 0.2)
             continue
-        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 25:
-            hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 20:
             break
         is_heading = bool(re.match(r'^[一二三四五六七八九十]+[、，,.]', stripped))
         is_sub = bool(re.match(r'^（?\d+[）)]', stripped))
-        indent = 0 if is_heading else (12 if is_sub else 8)
+        indent = 0 if is_heading else (10 if is_sub else 6)
         wrapped = hw.wrap(stripped, max_w - indent)
         for wl in wrapped:
+            if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 15:
+                break
             if is_heading:
                 hw.draw_line(draw, wl, x + indent, y, max_w, font=hw.font_b)
             else:
@@ -428,6 +424,8 @@ def render_front(lesson, hw):
 
 # ===================== BACK PAGE RENDERER =====================
 def render_back(lesson, hw):
+    """Back page flows directly from front - no '续前页' header.
+    Content continues naturally, with 板书设计/课后反思 as bold headers only."""
     pb = PaperBuilder()
     img = pb.create_page(hw.style)
     draw = ImageDraw.Draw(img)
@@ -439,9 +437,6 @@ def render_back(lesson, hw):
 
     content = lesson.get('back_content', '')
 
-    hw.draw_line(draw, '（续前页）', x, y, max_w, font=hw.font_b)
-    y += int(lsp * 1.2)
-
     lines = content.split('\n')
     for raw_line in lines:
         stripped = raw_line.strip()
@@ -449,29 +444,32 @@ def render_back(lesson, hw):
             y += int(lsp * 0.2)
             continue
 
-        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 25:
-            hw.draw_line(draw, '（完）', x, y, max_w, font=hw.font_s)
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 20:
             break
 
-        # Section headers - bold but NO box, just like real handwritten docs
+        # Section headers - bold, no box, no extra gap, just like real handwriting
         is_section = False
         for kw in ['板书设计', '课后反思', '教学反思', '板书', '教后反思', '作业设计']:
             if kw in stripped and len(stripped) < len(kw) + 5:
                 is_section = True
-                y += int(lsp * 0.3)
                 hw.draw_line(draw, stripped, x, y, max_w, font=hw.font_b)
                 y += lsp
                 break
         if is_section:
             continue
 
-        is_heading = bool(re.match(r'^[五六七八九十][、，,.]', stripped))
-        wrapped = hw.wrap(stripped, max_w - (0 if is_heading else 8))
+        # Regular content - headings get bold, sub-items get indent
+        is_heading = bool(re.match(r'^[一二三四五六七八九十]+[、，,.]', stripped))
+        is_sub = bool(re.match(r'^（?\d+[）)]', stripped))
+        indent = 0 if is_heading else (10 if is_sub else 6)
+        wrapped = hw.wrap(stripped, max_w - indent)
         for wl in wrapped:
+            if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 15:
+                break
             if is_heading:
-                hw.draw_line(draw, wl, x, y, max_w, font=hw.font_b)
+                hw.draw_line(draw, wl, x + indent, y, max_w, font=hw.font_b)
             else:
-                hw.draw_line(draw, wl, x + 8, y, max_w - 8)
+                hw.draw_line(draw, wl, x + indent, y, max_w - indent)
             y += lsp
 
     # Scribbles
