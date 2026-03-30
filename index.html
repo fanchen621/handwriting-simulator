@@ -612,6 +612,11 @@ async function doBatchPDF(){
 function doRender(){
   const t=$('e-title').value||'未命名';
   toast('正在渲染 "'+t+'" ...','in');
+  // Auto-navigate to render tab
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  document.querySelector('[data-t="render"]').classList.add('on');
+  $('t-render').classList.add('on');
   setTimeout(()=>{
     renderPage('f');renderPage('b');
     S.rendered=true;
