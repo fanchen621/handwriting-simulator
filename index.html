@@ -118,17 +118,16 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
 <body>
 <div class="wrap">
   <div class="hdr">
-    <h1>📝 教案手写仿真系统</h1>
-    <p>双面教案自动生成 · 批量导入DOCX · 真实手写渲染 · 自定义字体/纸张 · v3.0</p>
+    <h1>📝 教案手写仿真</h1>
+    <p>双面教案自动生成 · 批量导入 · 手写渲染</p>
   </div>
 
   <div class="tabs" id="tabs">
-    <div class="tab on" data-t="scan">📸 扫描采集</div>
-    <div class="tab" data-t="edit">✍️ 教案编写</div>
-    <div class="tab" data-t="render">🎨 渲染生成</div>
-    <div class="tab" data-t="batch">📦 批量处理</div>
-    <div class="tab" data-t="manage">⚙️ 字体/纸张</div>
-    <div class="tab" data-t="print">🖨️ 打印输出</div>
+    <div class="tab on" data-t="edit">✍️ 编写</div>
+    <div class="tab" data-t="render">🎨 渲染</div>
+    <div class="tab" data-t="batch">📦 批量</div>
+    <div class="tab" data-t="manage">⚙️ 字体</div>
+    <div class="tab" data-t="print">🖨️ 打印</div>
   </div>
 
   <!-- ===== Tab 1: Scan ===== -->
@@ -257,8 +256,8 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
       <div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">
         <p style="font-size:13px;font-weight:600;margin-bottom:8px">🎯 仿手写效果参数（autohanding风格）</p>
         <div class="fr3">
-          <div class="fg"><label class="fl">随机勾画涂改概率: <span id="sc-val">0</span>%</label>
-            <div class="sg"><input type="range" min="0" max="30" value="0" id="sc-sl" oninput="$('sc-val').textContent=this.value"><span class="sv" id="sc-val2">0%</span></div>
+          <div class="fg"><label class="fl">随机勾画涂改概率: <span id="sc-val">3</span>%</label>
+            <div class="sg"><input type="range" min="0" max="30" value="3" id="sc-sl" oninput="$('sc-val').textContent=this.value;$('sc-val2').textContent=this.value+'%'"><span class="sv" id="sc-val2">3%</span></div>
           </div>
           <div class="fg"><label class="fl">文字位置凌乱度: <span id="pd-val">0</span>%</label>
             <div class="sg"><input type="range" min="0" max="100" value="0" id="pd-sl" oninput="$('pd-val').textContent=this.value;$('pd-val2').textContent=this.value+'%'"><span class="sv" id="pd-val2">0%</span></div>
@@ -286,8 +285,8 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
       <div class="ct"><span class="n">👁</span> 渲染预览</div>
       <p class="hint" id="rv-hint">点击上方"生成预览"按钮开始渲染。正面和背面将同时生成。</p>
       <div class="pca" id="pca">
-        <div><div class="sl"><span class="badge f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
-        <div><div class="sl"><span class="badge bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
+        <div><div class="sl"><span class="badge f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fcfbf4;border-radius:4px"></canvas></div>
+        <div><div class="sl"><span class="badge bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fcfbf4;border-radius:4px"></canvas></div>
       </div>
       <div class="acts">
         <button class="btn bp bl" onclick="doRender()">🔄 重新渲染</button>
@@ -300,10 +299,11 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
   <div class="tc" id="t-batch">
     <div class="card">
       <div class="ct"><span class="n">📂</span> 批量导入DOCX教案</div>
-      <p class="hint">支持导入 .docx 文件，自动解析教案结构（课题、教学目标、重难点、教学过程、板书设计、课后反思）。可一次选择多个文件。</p>
+      <p class="hint">支持导入 .docx 文件（.doc 需先转换为 .docx）。自动解析教案结构（课题、教学目标、重难点、教学过程、板书设计、课后反思）。可一次选择多个文件。</p>
       <div class="import-zone" id="import-zone">
         <div class="ic">📄</div>
         <div class="tx">点击或拖拽上传 DOCX 文件（支持多选）</div>
+        <div class="ht" style="font-size:12px;color:var(--tl);margin-top:4px">⚠️ .doc 旧格式需转换为 .docx 后再导入</div>
         <input type="file" accept=".docx,.doc" multiple id="import-files">
       </div>
       <div id="batch-list" class="batch-list"></div>
@@ -502,7 +502,17 @@ function analyzePaper(data,w,h){
 $('import-files').addEventListener('change',async e=>{
   const files=Array.from(e.target.files);
   for(const f of files){
-    if(!f.name.endsWith('.docx')&&!f.name.endsWith('.doc')){toast('仅支持 .docx 文件','er');continue;}
+    if(f.name.endsWith('.doc')&&!f.name.endsWith('.docx')){
+      // .doc format is not supported by mammoth.js
+      const parsed={title:f.name.replace(/\.doc$/i,''),type:'新授课',goals:'',keypoints:'',front_content:'',back_content:''};
+      parsed.fileName=f.name;
+      parsed.status='error';
+      S.batchItems.push(parsed);
+      toast('⚠️ "'+f.name+'" 是旧版 .doc 格式，请先转换为 .docx 再导入。','er');
+      renderBatchList();
+      continue;
+    }
+    if(!f.name.endsWith('.docx')){toast('仅支持 .docx 文件','er');continue;}
     try{
       const arrayBuffer=await f.arrayBuffer();
       const result=await mammoth.extractRawText({arrayBuffer});
@@ -510,8 +520,14 @@ $('import-files').addEventListener('change',async e=>{
       parsed.fileName=f.name;
       parsed.status='pending';
       S.batchItems.push(parsed);
+      toast('✅ "'+f.name+'" 导入成功','ok');
     }catch(err){
-      console.error(err);toast('解析 '+f.name+' 失败: '+err.message,'er');
+      console.error(err);
+      const parsed={title:f.name.replace(/\.docx$/i,''),type:'新授课',goals:'',keypoints:'',front_content:'',back_content:''};
+      parsed.fileName=f.name;
+      parsed.status='error';
+      S.batchItems.push(parsed);
+      toast('解析 '+f.name+' 失败: '+err.message,'er');
     }
   }
   e.target.value='';
@@ -617,20 +633,22 @@ function doRender(){
   document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
   document.querySelector('[data-t="render"]').classList.add('on');
   $('t-render').classList.add('on');
-  setTimeout(()=>{
+  document.fonts.ready.then(()=>{
     renderPage('f');renderPage('b');
     S.rendered=true;
     $('rv-hint').textContent='✅ 渲染完成！可在下方预览效果。';
     toast('渲染完成！','ok');
-  },100);
+  });
 }
 function renderPageCanvas(lessonData,side){
   return new Promise(resolve=>{
-    const cv=document.createElement('canvas');
-    cv.width=662;cv.height=936;
-    const ctx=cv.getContext('2d');
-    drawPage(ctx,cv.width,cv.height,side,lessonData);
-    resolve(cv.toDataURL('image/png'));
+    document.fonts.ready.then(()=>{
+      const cv=document.createElement('canvas');
+      cv.width=662;cv.height=936;
+      const ctx=cv.getContext('2d');
+      drawPage(ctx,cv.width,cv.height,side,lessonData);
+      resolve(cv.toDataURL('image/png'));
+    });
   });
 }
 function renderPage(side){
@@ -641,7 +659,7 @@ function renderPage(side){
     goals:$('e-goals').value,keypoints:$('e-kp').value,
     front_content:$('e-front').value,back_content:$('e-back').value
   };
-  drawPage(ctx,W,H,side,data);
+  document.fonts.ready.then(()=>{drawPage(ctx,W,H,side,data);});
 }
 
 function drawPage(ctx,W,H,side,data){
@@ -656,9 +674,19 @@ function drawPage(ctx,W,H,side,data){
   // Paper background
   drawPaper(ctx,W,H,paperType);
 
-  // Lines
-  const lsp=Math.round(H/27*lsmult);
-  const sty=Math.round(lsp*1.4);
+  // Lines - exactly 28 horizontal lines
+  const totalLines=28;
+  const availableH=H-40; // top and bottom margin
+  const lsp=Math.round(availableH/totalLines);
+  const sty=Math.round(lsp*0.7); // start position
+
+  // Draw 28 horizontal lines
+  ctx.strokeStyle='rgba(180,170,155,0.35)';
+  ctx.lineWidth=0.6;
+  for(let i=0;i<totalLines;i++){
+    const ly=20+i*lsp;
+    ctx.beginPath();ctx.moveTo(W*0.082+4,ly);ctx.lineTo(W-22,ly);ctx.stroke();
+  }
 
   // Red margin
   const mx=Math.round(W*0.082);
@@ -673,14 +701,14 @@ function drawPage(ctx,W,H,side,data){
   const inkMap={blue:'#0f2d8c',blue2:'#1a5abf',black:'#111',red:'#c83232'};
   const ink=inkMap[$('ink-sel').value]||'#0f2d8c';
   let fontFamily;
-  if(S.font==='kai')fontFamily="'KaiTi','STKaiti',serif";
-  else if(S.font==='fang')fontFamily="'FangSong',serif";
-  else if(S.font==='hei')fontFamily="'SimHei','Microsoft YaHei',sans-serif";
-  else fontFamily="'KaiTi','STKaiti',serif";
-
-  // Check if custom font
-  const cf=S.customFonts.find(f=>f.name===S.font);
-  if(cf)fontFamily=`'${cf.name}',`+fontFamily;
+  if(S.font==='kai')fontFamily="KaiTi, STKaiti, serif";
+  else if(S.font==='fang')fontFamily="FangSong, serif";
+  else if(S.font==='hei')fontFamily="SimHei, Microsoft YaHei, sans-serif";
+  else{
+    const cf=S.customFonts.find(f=>f.name===S.font);
+    if(cf)fontFamily=`"${cf.name}", KaiTi, serif`;
+    else fontFamily="KaiTi, STKaiti, serif";
+  }
 
   ctx.fillStyle=ink;ctx.textBaseline='top';
   const tx=mx+14,mw=W-tx-22;
@@ -707,7 +735,7 @@ function drawPage(ctx,W,H,side,data){
 
 function drawPaper(ctx,W,H,type){
   const colors={
-    lined:'#fcfbf4',grid:'#fcfbf4',plain:'#ffffff',cream:'#faf6ed'
+    lined:'#fcfbf4',grid:'#fcfbf4',plain:'#fcfbf4',cream:'#fcfbf4'
   };
   // Check custom paper
   const cp=S.customPapers.find(p=>p.name===type);
@@ -773,7 +801,7 @@ function renderFront(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
   for(const raw of front.split('\n')){
     const s=raw.trim();if(!s){cy+=lsp*0.3;continue;}
     if(cy>H-35){dtx(ctx,'（续背面）',x,cy,ink+'88',pj,sj);break;}
-    const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
+    const hd=/^[一二三四五六七八九十]+[、，,：:]/.test(s);
     for(const l of wrap(s,mw-(hd?0:12),ctx)){
       ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
       dtx(ctx,l,hd?x:x+10,cy,ink,pj,sj);cy+=lsp;
@@ -791,9 +819,10 @@ function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
   for(const raw of lines){
     const s=raw.trim();
     if(!s){if(inSec)secL.push('');else cy+=lsp*0.3;continue;}
-    if(cy>H-35){
-      if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);
-      dtx(ctx,'（完）',x,cy,ink+'88',pj,sj);break;
+    if(cy>H-120){
+      // Stop processing content, reserve space for reflection box
+      if(inSec&&secL.length){const bh=drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);cy=secY+bh+lsp*1.2;}
+      break;
     }
     let isSec=false;
     for(const kw of ['板书设计','课后反思','教学反思','板书']){
@@ -805,7 +834,7 @@ function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
     if(isSec)continue;
     if(inSec){secL.push(s);}
     else{
-      const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
+      const hd=/^[一二三四五六七八九十]+[、，,：:]/.test(s);
       for(const l of wrap(s,mw-(hd?0:12),ctx)){
         ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
         dtx(ctx,l,hd?x:x+10,cy,ink,pj,sj);cy+=lsp;
@@ -814,6 +843,20 @@ function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
     }
   }
   if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);
+
+  // Draw "教学反思" box at bottom if not already drawn
+  const hasReflection=inSec&&(secT==='课后反思'||secT==='教学反思');
+  if(!hasReflection){
+    const boxY=Math.max(cy+lsp*0.5, H-220);
+    const reflectionLines=[];
+    let reflStart=false;
+    for(const raw of lines){
+      const s=raw.trim();
+      if(/课后反思|教学反思/.test(s)){reflStart=true;continue;}
+      if(reflStart)reflectionLines.push(s);
+    }
+    drawBox(ctx,'教学反思',reflectionLines.length?reflectionLines:[''],x,boxY,mw,lsp,fs,ff,ink,pj,sj);
+  }
 }
 
 function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink,pj,sj){
@@ -834,8 +877,8 @@ function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink,pj,sj){
 // Core text drawing with jitter control
 function dtx(ctx,t,x,y,c,pj=0,sj=0){
   // pj = position jitter (0-1), sj = stroke jitter (0-1)
-  const pJx=pj*3.5, pJy=pj*2.5;
-  const sJitter=sj*2;
+  const pJx=pj*15, pJy=pj*8;
+  const sJitter=sj*6;
   let cx=x;
   for(const ch of t){
     if(ch===' '){cx+=4;continue;}
@@ -850,7 +893,7 @@ function dtx(ctx,t,x,y,c,pj=0,sj=0){
     }
     ctx.fillStyle=c;
     ctx.fillText(ch,ox,oy);
-    cx+=ctx.measureText(ch).width*(0.94+Math.random()*0.12);
+    cx+=ctx.measureText(ch).width*(0.90+Math.random()*0.20);
   }
 }
 
