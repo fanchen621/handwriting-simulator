@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+actual_output/
+demo_output/
+config.json
+*.zip

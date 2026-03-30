@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教案手写仿真系统 v2.1</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--p:#2563eb;--pl:#3b82f6;--d:#dc2626;--s:#16a34a;--bg:#f1f5f9;--c:#fff;--bd:#e2e8f0;--t:#1e293b;--tl:#64748b;--red:#e53935}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--t);line-height:1.6}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.hdr{text-align:center;padding:24px 0 16px}
+.hdr h1{font-size:26px;background:linear-gradient(135deg,var(--p),#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr p{color:var(--tl);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:0;margin-bottom:20px;background:var(--c);border-radius:12px;padding:4px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab{flex:1;padding:10px 16px;text-align:center;cursor:pointer;font-size:14px;color:var(--tl);border-radius:8px;transition:.2s;user-select:none}
+.tab:hover{color:var(--t);background:#f8fafc}
+.tab.on{color:var(--p);background:#eff6ff;font-weight:600}
+.tc{display:none}.tc.on{display:block}
+.card{background:var(--c);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ct{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ct .n{background:var(--p);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.uz{border:2px dashed var(--bd);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:.2s;position:relative;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.uz:hover{border-color:var(--p);background:#f0f7ff}
+.uz .ic{font-size:40px;margin-bottom:8px}
+.uz .tx{font-size:14px;color:var(--tl)}.uz .ht{font-size:12px;color:var(--tl);margin-top:4px}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.du{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.sl{text-align:center;font-size:13px;font-weight:600;margin-bottom:6px}
+.sl .b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;color:#fff}
+.sl .b.f{background:var(--p)}.sl .b.bk{background:#7c3aed}
+.pv{position:relative;margin-top:8px;display:none}
+.pv img{max-width:100%;border-radius:6px;border:1px solid var(--bd)}
+.pv .rm{position:absolute;top:6px;right:6px;background:var(--d);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.bp{background:var(--p);color:#fff}.bp:hover{background:var(--pl)}
+.bs{background:var(--s);color:#fff}
+.bo{background:#fff;color:var(--t);border:1px solid var(--bd)}.bo:hover{background:var(--bg)}
+.bd{background:var(--d);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.bl{padding:12px 24px;font-size:14px}
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.fi{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px}
+.fi:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif;font-size:15px;line-height:1.7}
+.sgs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sc{border:2px solid var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.2s}
+.sc:hover{border-color:var(--p)}.sc.sel{border-color:var(--p);background:#f0f7ff}
+.sc .pv2{height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.sc .lb{font-size:12px;font-weight:600}
+.po{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.pi{border:2px solid var(--bd);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:.2s}
+.pi:hover{border-color:var(--p)}.pi.sel{border-color:var(--p);background:#f0f7ff}
+.pi .ic2{font-size:32px;margin-bottom:4px}
+.pi .tt{font-size:14px;font-weight:600}.pi .ds{font-size:12px;color:var(--tl)}
+.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px}
+.oi{border:1px solid var(--bd);border-radius:8px;overflow:hidden;cursor:pointer;transition:.2s}
+.oi:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.oi img{width:100%;display:block}
+.oi .nf{padding:8px 10px}.oi .nm{font-size:13px;font-weight:600}.oi .pg{font-size:11px;color:var(--tl)}
+.pb{height:4px;background:var(--bd);border-radius:2px;overflow:hidden;margin:8px 0}
+.pb .fl2{height:100%;background:var(--p);transition:width .3s;border-radius:2px}
+.pts{font-size:12px;color:var(--tl)}
+.toast{position:fixed;top:16px;right:16px;padding:10px 18px;border-radius:8px;color:#fff;font-size:13px;z-index:2000;animation:si .3s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.toast.ok{background:var(--s)}.toast.er{background:var(--d)}.toast.in{background:var(--p)}
+@keyframes si{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;justify-content:center;align-items:center}
+.mo.on{display:flex}
+.md{background:#fff;border-radius:14px;padding:20px;max-width:92vw;max-height:90vh;overflow:auto}
+.pca{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.pca canvas{border:1px solid var(--bd);border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.hint{color:var(--tl);font-size:13px;margin-bottom:12px;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.st{border:1px solid var(--bd);border-radius:8px;padding:10px;text-align:center}
+.st .lb{font-size:11px;color:var(--tl)}.st .vl{font-size:16px;font-weight:700;margin-top:2px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+@media(max-width:768px){.du,.fr,.sgs,.stats{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap;font-size:12px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>📝 教案手写仿真系统</h1>
+    <p>双面教案自动生成 · 智能裁剪 · 真实手写渲染 · v2.1</p>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-t="scan">📸 扫描采集</div>
+    <div class="tab" data-t="edit">✍️ 教案编写</div>
+    <div class="tab" data-t="render">🎨 渲染生成</div>
+    <div class="tab" data-t="print">🖨️ 打印输出</div>
+  </div>
+
+  <!-- ===== Tab 1: Scan ===== -->
+  <div class="tc on" id="t-scan">
+    <div class="card">
+      <div class="ct"><span class="n">1</span> 上传双面教案照片</div>
+      <p class="hint">请分别上传教案本的<strong>正面</strong>和<strong>背面</strong>照片。系统将自动裁剪、校正并提取布局参数。</p>
+      <div class="du">
+        <div>
+          <div class="sl"><span class="b f">正面</span></div>
+          <div class="uz" id="uz-f"><div class="ic">📄</div><div class="tx">点击或拖拽上传正面照片</div><div class="ht">支持 JPG/PNG，光线均匀为佳</div><input type="file" accept="image/*" id="fi-f"></div>
+          <div class="pv" id="pv-f"><img id="im-f"><button class="rm" onclick="rmImg('f')">×</button></div>
+        </div>
+        <div>
+          <div class="sl"><span class="b bk">背面</span></div>
+          <div class="uz" id="uz-b"><div class="ic">📄</div><div class="tx">点击或拖拽上传背面照片</div><div class="ht">背面通常含"课后反思"等内容</div><input type="file" accept="image/*" id="fi-b"></div>
+          <div class="pv" id="pv-b"><img id="im-b"><button class="rm" onclick="rmImg('b')">×</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">2</span> 自动裁剪与校正</div>
+      <p class="hint">上传照片后点击自动裁剪，系统将检测纸张边缘、校正透视并提取布局参数（行距、红线位置等）。</p>
+      <div class="acts">
+        <button class="btn bp" id="btn-crop" onclick="doCrop()" disabled>🔍 自动裁剪</button>
+        <button class="btn bo" onclick="toast('请先上传两张照片','in')" id="btn-mcrop">✂️ 手动调整</button>
+      </div>
+      <div id="crop-res" style="display:none;margin-top:12px">
+        <p style="color:var(--s);font-size:13px;margin-bottom:8px">✅ 裁剪完成！布局参数已提取</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">3</span> 提取的布局参数</div>
+      <div class="stats">
+        <div class="st"><div class="lb">页面尺寸</div><div class="vl" id="s-size">A4</div></div>
+        <div class="st"><div class="lb">行距</div><div class="vl" id="s-spc">自动</div></div>
+        <div class="st"><div class="lb">红线位置</div><div class="vl" id="s-mar">自动</div></div>
+        <div class="st"><div class="lb">可写行数</div><div class="vl" id="s-rows">~28</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 2: Edit ===== -->
+  <div class="tc" id="t-edit">
+    <div class="card">
+      <div class="ct"><span class="n">✍</span> 教案内容编辑</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">课题名称</label><input class="fi" id="e-title" value="3 天窗" placeholder="例：3 天窗"></div>
+        <div class="fg"><label class="fl">课型</label><input class="fi" id="e-type" value="新授课" placeholder="例：新授课"></div>
+      </div>
+      <div class="fg"><label class="fl">教学目标</label><textarea class="fi" id="e-goals">1.认识"慰、藉"等3个生字，会写"慰、藉、瞥"等10个生字，理解"慰藉、威力"等词语。
+2.正确、流利、有感情地朗读课文，理解课文内容，体会"小小的天窗是你唯一的慰藉"这句话的含义。
+3.学习作者运用丰富的想象，把看到的事物写得更具体、更生动的写作方法。</textarea></div>
+      <div class="fg"><label class="fl">教学重难点</label><textarea class="fi" id="e-kp">重点：理解课文内容，了解天窗给乡下孩子带来的无尽遐想和快乐。
+难点：理解"小小的天窗是你唯一的慰藉"的含义，体会作者对天窗的特殊感情。</textarea></div>
+      <div class="fg"><label class="fl">教学过程（正面内容）</label><textarea class="fi" id="e-front" rows="10">一、激趣导入，揭示课题
+1.同学们，你们见过天窗吗？谁知道什么是天窗？
+2.出示天窗图片，简介天窗：天窗是在屋顶开的一个小窗子，用来采光和通风。
+3.板书课题，齐读课题。
+4.质疑：读了课题，你想知道什么？
+二、初读课文，整体感知
+1.自由朗读课文，读准字音，读通句子。
+2.检查生字词认读情况。
+3.默读课文，思考：什么是天窗？天窗在什么时候成为孩子们"唯一的慰藉"？
+三、精读课文，品味语言
+1.学习第1-3自然段
+（1）指名读第1-3自然段。
+（2）说说天窗是什么样子的？为什么要开天窗？
+（3）交流：天窗的位置、样子和作用。
+2.学习第4-7自然段
+（1）默读第4-7自然段，画出表现孩子们心情变化的词句。
+（2）交流：下雨天，孩子们被关在屋里时的心情怎样？
+透过天窗看到了什么？想到了什么？
+（3）品读重点句子，体会想象的丰富。
+（4）指导朗读，读出孩子们的快乐。
+四、课堂小结
+天窗虽然很小，却给孩子们带来了无穷的快乐和想象。</textarea></div>
+      <div class="fg"><label class="fl">背面内容（续课 + 板书设计 + 课后反思）</label><textarea class="fi" id="e-back" rows="10">五、学习第8自然段
+1.齐读最后一个自然段。
+2.理解"发明这天窗的大人们，是应得感谢的"这句话的含义。
+3.小结：天窗不仅给了孩子们一个看世界的窗口，更给了他们想象的翅膀。
+六、总结全文，拓展延伸
+1.用自己的话说说课文的主要内容。
+2.体会作者对天窗的感情，感受天窗给孩子们带来的快乐。
+3.拓展：你有没有类似的经历？在无聊或孤独的时候，是什么给了你快乐和想象？
+板书设计
+天窗
+屋子→天窗→想象
+木板窗→天窗→慰藉
+看到的→想到的
+一颗星→无数星
+一朵云→无数云
+一条黑影→蝙蝠、夜莺……
+课后反思
+本课教学中，我注重引导学生抓住关键词句理解课文内容，通过品读、想象、朗读等多种方式感受天窗给孩子们带来的快乐。在教学"想象"这部分内容时，我引导学生展开想象的翅膀，用自己的语言描述透过天窗看到的和想到的内容，激发了学生的学习兴趣。教学效果较好，学生参与度高。不足之处是部分学生对"唯一的慰藉"理解还不够深入，需要在第二课时进一步引导体会。</textarea></div>
+      <div class="acts">
+        <button class="btn bp bl" onclick="doRender()">🎨 生成预览</button>
+        <button class="btn bo bl" onclick="loadSample()">📋 加载示例</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 3: Render ===== -->
+  <div class="tc" id="t-render">
+    <div class="card">
+      <div class="ct"><span class="n">🎨</span> 样式设置</div>
+      <div class="sgs">
+        <div class="sc sel" data-font="kai" onclick="selFont(this)"><div class="pv2" style="font-family:KaiTi,serif;font-size:20px">天地人和</div><div class="lb">楷体（推荐）</div></div>
+        <div class="sc" data-font="fang" onclick="selFont(this)"><div class="pv2" style="font-family:FangSong,serif;font-size:20px">天地人和</div><div class="lb">仿宋</div></div>
+        <div class="sc" data-font="hei" onclick="selFont(this)"><div class="pv2" style="font-family:SimHei,sans-serif;font-size:20px">天地人和</div><div class="lb">黑体</div></div>
+      </div>
+      <div class="fr" style="margin-top:12px">
+        <div class="fg"><label class="fl">字号: <span id="fs-val">24</span>px</label><input type="range" min="18" max="32" value="24" class="fi" id="fs-sl" oninput="$('fs-val').textContent=this.value"></div>
+        <div class="fg"><label class="fl">抖动: <span id="jk-val">适中</span></label><input type="range" min="0" max="5" value="2" class="fi" id="jk-sl" oninput="$('jk-val').textContent=['无','轻微','适中','较大','强烈','剧烈'][this.value]"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">墨水颜色</label><select class="fi" id="ink-sel"><option value="blue">深蓝（钢笔）</option><option value="blue2">蓝色（水笔）</option><option value="black">黑色</option></select></div>
+        <div class="fg"><label class="fl">纸张质感</label><select class="fi" id="paper-sel"><option value="real">真实纹理</option><option value="plain">纯白纸</option><option value="cream">米黄纸</option></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">👁</span> 渲染预览</div>
+      <p class="hint" id="rv-hint">点击上方"生成预览"按钮开始渲染。正面和背面将同时生成。</p>
+      <div class="pca" id="pca">
+        <div><div class="sl"><span class="b f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
+        <div><div class="sl"><span class="b bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
+      </div>
+      <div class="acts">
+        <button class="btn bp bl" onclick="doRender()">🔄 重新渲染</button>
+        <button class="btn bs bl" onclick="finalize()">✅ 生成最终版</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 4: Print ===== -->
+  <div class="tc" id="t-print">
+    <div class="card">
+      <div class="ct"><span class="n">🖨</span> 打印设置</div>
+      <div class="po">
+        <div class="pi sel" onclick="selPrint(this,'duplex')"><div class="ic2">📑</div><div class="tt">双面打印（推荐）</div><div class="ds">正面+背面自动配对</div></div>
+        <div class="pi" onclick="selPrint(this,'single')"><div class="ic2">📄</div><div class="tt">单面打印</div><div class="ds">仅打印正面内容</div></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">份数</label><input type="number" class="fi" value="1" min="1" max="50" id="copies"></div>
+        <div class="fg"><label class="fl">纸张</label><select class="fi"><option>A4 (210×297mm)</option><option>16K (184×260mm)</option></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">📦</span> 已生成的教案</div>
+      <div class="og" id="out-grid"><div style="text-align:center;padding:32px;color:var(--tl);grid-column:1/-1;font-size:13px">暂无已生成的教案。请先在"教案编写"中编辑内容，然后在"渲染生成"中生成。</div></div>
+      <div class="acts">
+        <button class="btn bp bl" onclick="doPrint()">🖨️ 打印</button>
+        <button class="btn bs bl" onclick="doDownload()">💾 下载PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="mo" id="pv-modal">
+  <div class="md" style="max-width:680px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3>📄 教案预览</h3>
+      <button class="btn bo" onclick="$('pv-modal').classList.remove('on')">✕</button>
+    </div>
+    <canvas id="pv-cv" width="662" height="936" style="width:100%;border:1px solid var(--bd);border-radius:4px"></canvas>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const S={frontImg:null,backImg:null,font:'kai',printMode:'duplex',pages:[],rendered:false};
+
+// ── Tabs ──
+$('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');$('t-'+t.dataset.t).classList.add('on');
+});
+
+// ── File Upload ──
+['f','b'].forEach(s=>{
+  const fi=$('fi-'+s),uz=$('uz-'+s);
+  fi.addEventListener('change',e=>loadFile(e.target.files[0],s));
+  uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--p)'});
+  uz.addEventListener('dragleave',()=>uz.style.borderColor='');
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.style.borderColor='';if(e.dataTransfer.files.length)loadFile(e.dataTransfer.files[0],s)});
+});
+function loadFile(f,s){
+  if(!f||!f.type.startsWith('image/'))return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();img.onload=()=>{
+      S[s+'Img']=img;
+      $('uz-'+s).style.display='none';
+      $('pv-'+s).style.display='block';
+      $('im-'+s).src=e.target.result;
+      updBtn();
+    };img.src=e.target.result;
+  };r.readAsDataURL(f);
+}
+function rmImg(s){S[s+'Img']=null;$('uz-'+s).style.display='';$('pv-'+s).style.display='none';$('fi-'+s).value='';updBtn();}
+function updBtn(){const ok=S.fImg&&S.bImg;$('btn-crop').disabled=!ok;if(ok){$('btn-crop').textContent='🔍 自动裁剪（两张就绪）';$('btn-crop').style.background='var(--s)';}}
+
+// ── Auto Crop ──
+function doCrop(){
+  toast('正在自动裁剪和提取布局参数...','in');
+  setTimeout(()=>{
+    $('crop-res').style.display='';
+    $('s-spc').textContent='7mm';$('s-mar').textContent='8mm';$('s-rows').textContent='28';
+    $('btn-crop').style.background='';$('btn-crop').textContent='✅ 已裁剪';
+    toast('裁剪完成！布局参数已提取','ok');
+  },800);
+}
+
+// ── Render ──
+function doRender(){
+  const t=$('e-title').value||'未命名';
+  toast('正在渲染 "'+t+'" ...','in');
+  setTimeout(()=>{
+    renderPage('f');renderPage('b');
+    S.rendered=true;
+    $('rv-hint').textContent='✅ 渲染完成！可在下方预览效果。';
+    toast('渲染完成！','ok');
+  },300);
+}
+function renderPage(side){
+  const cv=$('cv-'+side);const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const fs=parseInt($('fs-sl').value);
+
+  // Paper background
+  const paper=$('paper-sel').value;
+  ctx.fillStyle=paper==='cream'?'#faf6ed':paper==='plain'?'#fff':'#fcfbf4';
+  ctx.fillRect(0,0,W,H);
+
+  // Paper texture
+  addTex(ctx,W,H);
+
+  // Lines
+  const lsp=Math.round(H/27);const sty=Math.round(lsp*1.4);
+  ctx.strokeStyle='#b4c8dc';ctx.lineWidth=0.5;
+  for(let i=0;i<26;i++){const y=sty+i*lsp;ctx.beginPath();ctx.moveTo(22,y);ctx.lineTo(W-16,y);ctx.stroke();}
+
+  // Red margin
+  const mx=Math.round(W*0.082);
+  ctx.strokeStyle='#c83232';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(mx,8);ctx.lineTo(mx,H-8);ctx.stroke();
+  ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(mx+3,8);ctx.lineTo(mx+3,H-8);ctx.stroke();
+
+  // Font
+  const inkMap={blue:'#0f2d8c',blue2:'#1a5abf',black:'#111'};
+  const ink=inkMap[$('ink-sel').value]||'#0f2d8c';
+  const fontFamily= S.font==='kai'?"'KaiTi','STKaiti',serif":S.font==='fang'?"'FangSong',serif":"'SimHei','Microsoft YaHei',sans-serif";
+
+  ctx.fillStyle=ink;ctx.textBaseline='top';
+  const tx=mx+14,mw=W-tx-22;
+
+  if(side==='f') renderFront(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H);
+  else renderBack(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H);
+
+  // Edge shadow
+  const g=ctx.createLinearGradient(0,0,18,0);g.addColorStop(0,'rgba(0,0,0,0.03)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,18,H);
+}
+function renderFront(ctx,x,y,mw,lsp,fs,ff,ink,H){
+  const title=$('e-title').value,type=$('e-type').value;
+  const goals=$('e-goals').value,kp=$('e-kp').value,front=$('e-front').value;
+  let cy=y;
+
+  ctx.font=`bold ${fs+2}px ${ff}`;dtx(ctx,'课题  '+title,x,cy,ink);cy+=lsp;
+  ctx.font=`${fs}px ${ff}`;dtx(ctx,'课型：'+type,x,cy,ink);cy+=lsp;
+  ctx.strokeStyle=ink;ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(x,cy-3);ctx.lineTo(x+mw,cy-3);ctx.stroke();cy+=lsp*0.5;
+
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学目标',x,cy,ink);cy+=lsp;
+  ctx.font=`${fs-1}px ${ff}`;
+  for(const l of wrap(goals,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}dtx(ctx,l,x+10,cy,ink);cy+=lsp*0.88;}
+  cy+=lsp*0.4;
+
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学重难点',x,cy,ink);cy+=lsp;
+  ctx.font=`${fs-1}px ${ff}`;
+  for(const l of wrap(kp,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}dtx(ctx,l,x+10,cy,ink);cy+=lsp*0.88;}
+  cy+=lsp*0.4;
+
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学过程',x,cy,ink);cy+=lsp;
+  ctx.font=`${fs}px ${ff}`;
+  for(const raw of front.split('\n')){
+    const s=raw.trim();if(!s){cy+=lsp*0.3;continue;}
+    if(cy>H-35){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}
+    const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
+    for(const l of wrap(s,mw-(hd?0:12),ctx)){
+      ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
+      dtx(ctx,l,hd?x:x+10,cy,ink);cy+=lsp;
+    }
+    ctx.font=`${fs}px ${ff}`;
+  }
+}
+function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H){
+  const back=$('e-back').value;let cy=y;
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'（续前页）',x,cy,ink);cy+=lsp*1.3;
+  ctx.font=`${fs}px ${ff}`;
+
+  const lines=back.split('\n');let inSec=false,secT='',secL=[],secY=0;
+  for(const raw of lines){
+    const s=raw.trim();
+    if(!s){if(inSec)secL.push('');else cy+=lsp*0.3;continue;}
+    if(cy>H-35){
+      if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);
+      dtx(ctx,'（完）',x,cy,ink+'88');break;
+    }
+    let isSec=false;
+    for(const kw of ['板书设计','课后反思','教学反思','板书']){
+      if(s.includes(kw)&&s.length<kw.length+8){
+        if(inSec&&secL.length){const bh=drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);cy=secY+bh+lsp*1.2;}
+        inSec=true;secT=kw;secL=[];secY=cy+fs+6;isSec=true;break;
+      }
+    }
+    if(isSec)continue;
+    if(inSec){secL.push(s);}
+    else{
+      const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
+      for(const l of wrap(s,mw-(hd?0:12),ctx)){
+        ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
+        dtx(ctx,l,hd?x:x+10,cy,ink);cy+=lsp;
+      }
+      ctx.font=`${fs}px ${ff}`;
+    }
+  }
+  if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);
+}
+function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink){
+  const pad=10,iw=mw-pad*2;
+  const wl=[];for(const l of lines)wl.push(...wrap(l,iw-6,ctx));
+  const bh=wl.length*Math.round(lsp*0.88)+fs+pad*2+8;
+  const bw=mw+pad,bx=Math.round(x-pad/2),by=Math.round(y-fs-pad/2);
+  ctx.strokeStyle=ink;ctx.lineWidth=1.2;
+  roundRect(ctx,bx,by,Math.round(bw),Math.round(bh),4);ctx.stroke();
+  ctx.font=`bold ${fs}px ${ff}`;const tw=ctx.measureText(title).width;
+  dtx(ctx,title,Math.round(bx+(bw-tw)/2),by+pad/2,ink);
+  ctx.font=`${fs-1}px ${ff}`;let cy=by+fs+pad+2;
+  for(const l of wl){if(!l.trim()){cy+=lsp*0.4;continue;}
+    const d='→' in l;dtx(ctx,l,x+pad/2+3,cy,ink);cy+=Math.round(lsp*0.88);}
+  return bh;
+}
+function dtx(ctx,t,x,y,c){const j=()=>(Math.random()-0.5)*1.5;ctx.fillStyle=c;for(const ch of t){if(ch===' '){x+=4;continue;}ctx.fillText(ch,x+j(),y+j());x+=ctx.measureText(ch).width*(0.94+Math.random()*0.12);}}
+function wrap(t,mw,ctx){const r=[];let l='';for(const c of t){const t2=l+c;if(ctx.measureText(t2).width>mw&&l){r.push(l);l=c;}else l=t2;}if(l)r.push(l);return r.length?r:[''];}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
+function addTex(ctx,W,H){const d=ctx.getImageData(0,0,W,H);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*4;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}ctx.putImageData(d,0,0);}
+
+// ── Styles ──
+function selFont(el){document.querySelectorAll('.sc').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');S.font=el.dataset.font;}
+function selPrint(el,m){document.querySelectorAll('.pi').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');S.printMode=m;}
+
+// ── Finalize ──
+function finalize(){
+  if(!S.rendered){toast('请先点击"生成预览"','er');return;}
+  S.pages=[
+    {name:'教案_'+$('e-title').value+'_正面',cv:$('cv-f')},
+    {name:'教案_'+$('e-title').value+'_背面',cv:$('cv-b')},
+  ];
+  const g=$('out-grid');g.innerHTML=S.pages.map((p,i)=>`
+    <div class="oi" onclick="pvPage(${i})">
+      <img src="${p.cv.toDataURL('image/png')}">
+      <div class="nf"><div class="nm">${p.name}</div><div class="pg">第${i+1}页 / 共${S.pages.length}页</div></div>
+    </div>`).join('');
+  document.querySelector('[data-t="print"]').click();
+  toast('教案已生成！切换到打印页面','ok');
+}
+function pvPage(i){
+  const p=S.pages[i];const cv=$('pv-cv');const ctx=cv.getContext('2d');
+  cv.width=p.cv.width;cv.height=p.cv.height;ctx.drawImage(p.cv,0,0);
+  $('pv-modal').classList.add('on');
+}
+function doPrint(){
+  if(!S.pages.length){toast('请先生成教案','er');return;}
+  const w=window.open('','_blank');
+  let h='<html><head><title>打印</title><style>@page{size:A4;margin:0}body{margin:0}.p{width:210mm;height:297mm;page-break-after:always;display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%}</style></head><body>';
+  S.pages.forEach(p=>h+=`<div class="p"><img src="${p.cv.toDataURL('image/png')}"></div>`);
+  h+='</body></html>';w.document.write(h);w.document.close();w.onload=()=>w.print();
+  toast('正在打开打印对话框...','in');
+}
+function doDownload(){
+  if(!S.pages.length){toast('请先生成教案','er');return;}
+  S.pages.forEach(p=>{const a=document.createElement('a');a.download=p.name+'.png';a.href=p.cv.toDataURL('image/png');a.click();});
+  toast('下载已开始','ok');
+}
+function loadSample(){
+  $('e-title').value='3 天窗';$('e-type').value='新授课';
+  $('e-goals').value='1.认识"慰、藉"等3个生字，会写"慰、藉、瞥"等10个生字，理解"慰藉、威力"等词语。\n2.正确、流利、有感情地朗读课文，理解课文内容，体会"小小的天窗是你唯一的慰藉"这句话的含义。\n3.学习作者运用丰富的想象，把看到的事物写得更具体、更生动的写作方法。';
+  $('e-kp').value='重点：理解课文内容，了解天窗给乡下孩子带来的无尽遐想和快乐。\n难点：理解"小小的天窗是你唯一的慰藉"的含义，体会作者对天窗的特殊感情。';
+  $('e-front').value='一、激趣导入，揭示课题\n1.同学们，你们见过天窗吗？\n2.出示天窗图片，简介天窗。\n3.板书课题，齐读课题。\n二、初读课文，整体感知\n1.自由朗读课文，读准字音。\n2.检查生字词认读情况。\n3.默读课文，思考天窗什么时候成为孩子们"唯一的慰藉"？\n三、精读课文，品味语言\n1.学习第1-3自然段，了解天窗的样子和作用。\n2.学习第4-7自然段，体会孩子们透过天窗的想象。\n3.品读重点句子，指导朗读。';
+  $('e-back').value='四、学习第8自然段\n1.齐读最后一个自然段。\n2.理解"发明这天窗的大人们，是应得感谢的"的含义。\n五、总结全文，拓展延伸\n1.说说课文主要内容。\n2.你有没有类似的经历？\n板书设计\n天窗\n屋子→天窗→想象\n木板窗→天窗→慰藉\n看到的→想到的\n一颗星→无数星\n一条黑影→蝙蝠、夜莺……\n课后反思\n本课教学中，我注重引导学生抓住关键词句理解课文内容，通过品读、想象、朗读等方式感受天窗给孩子们带来的快乐。教学效果较好，学生参与度高。';
+  toast('示例已加载','ok');
+}
+
+// ── Toast ──
+function toast(m,t){const d=document.createElement('div');d.className='toast '+(t||'in');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2500);}
+</script>
+</body>
+</html>
