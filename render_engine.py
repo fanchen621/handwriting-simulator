@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-教案手写仿真系统 v2.1 - 高真实度渲染引擎
-支持双面教案、自动裁剪、真实手写渲染
-优化版：基于真实教案样张调参，逼真度最大化
+教案手写仿真系统 v3.0 - 高真实度渲染引擎
+支持双面教案、批量DOCX导入、PDF导出、自定义字体/纸张
+新增：随机勾画涂改、文字位置凌乱度、字体笔画凌乱度
 """
 import os
 import sys
@@ -11,6 +11,7 @@ import glob
 import json
 import random
 import math
+import argparse
 from pathlib import Path
 
 try:
@@ -21,69 +22,125 @@ except ImportError:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
     import numpy as np
 
+# Optional: python-docx for .docx import
+try:
+    from docx import Document
+    HAS_DOCX = True
+except ImportError:
+    HAS_DOCX = False
 
-# ===================== CONFIG (based on real notebook analysis) =====================
+
+# ===================== CONFIG =====================
 class Config:
     """A4 notebook settings calibrated from real handwritten samples"""
-    DPI = 200  # Higher DPI for more realistic output
+    DPI = 200
     PAGE_W = int(8.27 * DPI)   # 1654px
     PAGE_H = int(11.69 * DPI)  # 2338px
 
-    # Layout (calibrated from sample photos)
-    RED_LINE_X = int(0.38 * DPI)       # Red margin ~7.6mm from left
+    # Layout
+    RED_LINE_X = int(0.38 * DPI)
     MARGIN_TOP = int(0.45 * DPI)
     MARGIN_RIGHT = int(0.25 * DPI)
     MARGIN_BOTTOM = int(0.3 * DPI)
 
-    # Line spacing (tighter, matching real notebooks ~7mm)
-    LINE_SPACING = int(0.28 * DPI)  # Was 0.34, now tighter like real notebooks
+    LINE_SPACING = int(0.28 * DPI)
     NUM_LINES = (PAGE_H - MARGIN_TOP - MARGIN_BOTTOM) // LINE_SPACING
 
-    # Text area
-    TEXT_X = RED_LINE_X + int(0.18 * DPI)  # Text starts ~3.6mm after red line
+    TEXT_X = RED_LINE_X + int(0.18 * DPI)
     TEXT_MAX_W = PAGE_W - TEXT_X - MARGIN_RIGHT
 
-    # Colors (calibrated from sample photos)
-    PAPER_BASE = (252, 251, 245)        # Warm off-white
-    LINE_COLOR = (165, 190, 215)         # Light blue-gray ruled lines
-    RED_LINE = (200, 45, 45)             # Red margin
-    RED_LINE_LIGHT = (200, 45, 45, 90)   # Secondary red line
-    INK_BLUE = (15, 45, 140)             # Primary blue ink (rollerball pen)
-    INK_BLUE_LIGHT = (30, 65, 155)       # Lighter ink variation
-    INK_BLUE_DARK = (8, 25, 100)         # Darker pressure spots
-    INK_FADED = (50, 80, 160, 160)       # Faded/quick strokes
+    # Colors
+    PAPER_BASE = (252, 251, 245)
+    PAPER_CREAM = (250, 246, 237)
+    PAPER_WHITE = (255, 255, 255)
+    LINE_COLOR = (165, 190, 215)
+    RED_LINE = (200, 45, 45)
+    INK_BLUE = (15, 45, 140)
+    INK_BLUE_LIGHT = (30, 65, 155)
+    INK_BLUE_DARK = (8, 25, 100)
+    INK_FADED = (50, 80, 160)
+    INK_BLACK = (17, 17, 17)
+    INK_RED = (200, 45, 45)
 
-    # Handwriting jitter (calibrated for natural feel)
+    # Handwriting jitter (base)
     JITTER_X = 1.2
     JITTER_Y = 0.8
-    JITTER_ROTATION = 0.015
-    LINE_TILT = 0.0015                   # Very slight upward drift
-    CHAR_SPREAD = 0.08                   # Character width variation ±8%
+    CHAR_SPREAD = 0.08
 
-    # Section box
+    # Box
     BOX_PAD = 12
     BOX_RADIUS = 4
     BOX_COLOR = (15, 45, 140)
     BOX_WIDTH = 1.5
 
 
+# ===================== HANDWRITING STYLE =====================
+class HandwritingStyle:
+    """Configurable handwriting style parameters"""
+    def __init__(self):
+        self.font_size = 24
+        self.line_spacing_mult = 1.0
+        self.position_disorder = 0.0    # 0.0 - 1.0 (text position jitter)
+        self.stroke_disorder = 0.0      # 0.0 - 1.0 (font stroke messiness)
+        self.scribble_prob = 0.0        # 0.0 - 0.30 (random correction marks)
+        self.ink_variation = 2          # 0-4 (ink darkness variation)
+        self.ink_color = 'blue'         # blue, blue2, black, red
+        self.paper_type = 'lined'       # lined, grid, plain, cream
+        self.font_name = 'kai'          # kai, fang, hei, or custom name
+        self.custom_font_path = None
+        self.custom_paper_path = None
+
+    @property
+    def ink_rgb(self):
+        colors = {
+            'blue': Config.INK_BLUE,
+            'blue2': Config.INK_BLUE_LIGHT,
+            'black': Config.INK_BLACK,
+            'red': Config.INK_RED,
+        }
+        return colors.get(self.ink_color, Config.INK_BLUE)
+
+
 # ===================== FONT LOADER =====================
-def load_font(size):
+def load_font(size, font_name='kai', custom_path=None):
     """Load best available CJK font"""
-    candidates = [
+    if custom_path and os.path.exists(custom_path):
+        try:
+            return ImageFont.truetype(custom_path, size)
+        except Exception:
+            pass
+
+    font_map = {
+        'kai': [
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "C:/Windows/Fonts/simkai.ttf",
+            "C:/Windows/Fonts/kaiu.ttf",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+        ],
+        'fang': [
+            "C:/Windows/Fonts/simfang.ttf",
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        ],
+        'hei': [
+            "C:/Windows/Fonts/simhei.ttf",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        ],
+    }
+
+    candidates = font_map.get(font_name, font_map['kai'])
+    # Add universal fallbacks
+    candidates += [
         "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
         "C:/Windows/Fonts/msyh.ttc",
         "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simkai.ttf",
-        "C:/Windows/Fonts/kaiu.ttf",
         "/System/Library/Fonts/PingFang.ttc",
-        "/System/Library/Fonts/STHeiti Light.ttc",
     ]
+
     for fp in candidates:
-        if fp and os.path.exists(fp):
+        if os.path.exists(fp):
             try:
                 return ImageFont.truetype(fp, size)
             except Exception:
@@ -93,25 +150,37 @@ def load_font(size):
 
 # ===================== HANDWRITING ENGINE =====================
 class Handwriter:
-    """Renders text with realistic handwriting effects"""
-
-    def __init__(self, font_size=24):
-        self.fs = font_size
-        self.font = load_font(font_size)
-        self.font_b = load_font(font_size + 2)
-        self.font_s = load_font(font_size - 2)  # Small font for notes
+    def __init__(self, style: HandwritingStyle = None):
+        self.style = style or HandwritingStyle()
+        s = self.style
+        self.fs = s.font_size
+        self.font = load_font(s.font_size, s.font_name, s.custom_font_path)
+        self.font_b = load_font(s.font_size + 2, s.font_name, s.custom_font_path)
+        self.font_s = load_font(s.font_size - 2, s.font_name, s.custom_font_path)
 
     def ink_color(self):
-        """Random ink color variation"""
+        """Random ink color with variation based on style"""
+        base = self.style.ink_rgb
+        v = self.style.ink_variation
+        if v == 0:
+            return base
         r = random.random()
-        if r < 0.60:
-            return Config.INK_BLUE
-        elif r < 0.80:
-            return Config.INK_BLUE_LIGHT
-        elif r < 0.92:
-            return Config.INK_BLUE_DARK
+        if v <= 1:
+            return base if r < 0.85 else (
+                tuple(min(255, c + 20) for c in base) if r < 0.95
+                else tuple(max(0, c - 20) for c in base)
+            )
+        # Higher variation
+        if r < 0.50:
+            return base
+        elif r < 0.70:
+            return tuple(min(255, c + 15 + v * 5) for c in base)
+        elif r < 0.85:
+            return tuple(max(0, c - 15 - v * 5) for c in base)
+        elif r < 0.95:
+            return tuple(list(base[:3]) + [160]) if len(base) == 3 else base
         else:
-            return Config.INK_FADED
+            return tuple(min(255, c + 30) for c in base[:3])
 
     def char_width(self, ch, font=None):
         f = font or self.font
@@ -121,49 +190,64 @@ class Handwriter:
         f = font or self.font
         return f.getlength(text)
 
-    def draw_char(self, draw, ch, x, y, font=None, color=None, jitter=True):
-        """Draw single character with natural variation"""
+    def draw_char(self, draw, ch, x, y, font=None, color=None):
+        """Draw single character with position + stroke disorder"""
         f = font or self.font
         c = color or self.ink_color()
+        pd = self.style.position_disorder
+        sd = self.style.stroke_disorder
 
-        if jitter and ch.strip():
-            jx = x + random.gauss(0, Config.JITTER_X)
-            jy = y + random.gauss(0, Config.JITTER_Y)
+        if ch.strip():
+            jx = x + random.gauss(0, Config.JITTER_X * (1 + pd * 4))
+            jy = y + random.gauss(0, Config.JITTER_Y * (1 + pd * 3))
         else:
             jx, jy = x, y
+
+        # Stroke disorder: draw ghost/offset copy
+        if sd > 0 and ch.strip() and random.random() < sd * 0.3:
+            ghost_c = tuple(list(c[:3]) + [40]) if len(c) == 3 else (*c[:3], 40)
+            draw.text(
+                (jx + random.gauss(0, sd * 3), jy + random.gauss(0, sd * 2)),
+                ch, font=f, fill=ghost_c
+            )
 
         draw.text((jx, jy), ch, font=f, fill=c)
 
     def draw_line(self, draw, text, x, y, max_w=None, font=None, color=None, indent=0):
-        """Draw a line of text with handwriting effect. Returns (width, actual_y)."""
+        """Draw a line of text with handwriting effect"""
         f = font or self.font
         cx = x + indent
-        line_start_x = cx
+        pd = self.style.position_disorder
+        sd = self.style.stroke_disorder
 
         for ch in text:
             if ch == ' ':
                 cx += self.fs * 0.35
                 continue
-
             cw = self.char_width(ch, f)
-            stretch = 1.0 - Config.CHAR_SPREAD/2 + random.random() * Config.CHAR_SPREAD
-
-            # Per-character vertical jitter
-            cy = y + random.gauss(0, Config.JITTER_Y * 0.4)
-
+            stretch = 1.0 - Config.CHAR_SPREAD / 2 + random.random() * Config.CHAR_SPREAD
+            cy = y + random.gauss(0, Config.JITTER_Y * (0.4 + pd * 2))
             c = color or self.ink_color()
-            draw.text((cx + random.gauss(0, Config.JITTER_X * 0.3), cy),
-                      ch, font=f, fill=c)
 
+            # Stroke disorder ghost
+            if sd > 0 and ch.strip() and random.random() < sd * 0.25:
+                draw.text(
+                    (cx + random.gauss(0, sd * 2.5), cy + random.gauss(0, sd * 1.5)),
+                    ch, font=f, fill=(*c[:3], 35) if isinstance(c, tuple) and len(c) >= 3 else c
+                )
+
+            draw.text(
+                (cx + random.gauss(0, Config.JITTER_X * (0.3 + pd * 1.5)), cy),
+                ch, font=f, fill=c
+            )
             cx += cw * stretch
 
-            if max_w and (cx - line_start_x) > max_w:
+            if max_w and (cx - x - indent) > max_w:
                 break
 
-        return cx - line_start_x
+        return cx - x - indent
 
     def wrap(self, text, max_w, font=None):
-        """Word-wrap text to fit width"""
         f = font or self.font
         result = []
         for para in text.split('\n'):
@@ -183,57 +267,94 @@ class Handwriter:
         return result if result else ['']
 
 
-# ===================== PAGE BUILDER =====================
-class PageBuilder:
-    """Builds a realistic notebook page"""
+# ===================== PAPER BUILDER =====================
+class PaperBuilder:
+    """Build realistic notebook pages with different styles"""
 
-    def __init__(self, hw):
-        self.hw = hw
+    @staticmethod
+    def create_page(style: HandwritingStyle):
+        """Create blank page based on paper type"""
+        if style.paper_type == 'cream':
+            bg = Config.PAPER_CREAM
+        elif style.paper_type == 'plain':
+            bg = Config.PAPER_WHITE
+        else:
+            bg = Config.PAPER_BASE
 
-    def new_page(self):
-        """Create blank ruled page"""
-        img = Image.new('RGB', (Config.PAGE_W, Config.PAGE_H), Config.PAPER_BASE)
+        if style.custom_paper_path and os.path.exists(style.custom_paper_path):
+            try:
+                img = Image.open(style.custom_paper_path).convert('RGB')
+                img = img.resize((Config.PAGE_W, Config.PAGE_H), Image.LANCZOS)
+                return img
+            except Exception:
+                pass
+
+        img = Image.new('RGB', (Config.PAGE_W, Config.PAGE_H), bg)
         draw = ImageDraw.Draw(img)
-        self._draw_lines(draw)
-        self._draw_red_margin(draw)
-        return img, draw
 
-    def _draw_lines(self, draw):
-        """Draw horizontal ruled lines"""
+        if style.paper_type == 'grid':
+            PaperBuilder._draw_grid(draw)
+        elif style.paper_type != 'plain':
+            PaperBuilder._draw_lines(draw)
+
+        PaperBuilder._draw_red_margin(draw)
+        return img
+
+    @staticmethod
+    def _draw_lines(draw):
         for i in range(Config.NUM_LINES):
             ly = Config.MARGIN_TOP + i * Config.LINE_SPACING
-            # Main line
             draw.line(
                 [(Config.RED_LINE_X - int(0.08 * Config.DPI), ly),
                  (Config.PAGE_W - Config.MARGIN_RIGHT, ly)],
                 fill=Config.LINE_COLOR, width=1
             )
 
-    def _draw_red_margin(self, draw):
-        """Draw double red margin line (like real notebooks)"""
+    @staticmethod
+    def _draw_grid(draw):
+        """Draw red square grid (田字格 style)"""
+        cell_size = Config.LINE_SPACING
+        start_x = Config.RED_LINE_X + 6
+        cols = (Config.PAGE_W - start_x - Config.MARGIN_RIGHT) // cell_size
+        rows = (Config.PAGE_H - Config.MARGIN_TOP - Config.MARGIN_BOTTOM) // cell_size
+
+        grid_color = (200, 50, 50)
+        for r in range(rows):
+            for c in range(cols):
+                x = start_x + c * cell_size
+                y = Config.MARGIN_TOP + r * cell_size
+                # Outer rectangle
+                draw.rectangle([x, y, x + cell_size, y + cell_size],
+                               outline=(*grid_color, 80), width=1)
+                # Center cross
+                cx, cy = x + cell_size // 2, y + cell_size // 2
+                draw.line([(cx, y), (cx, y + cell_size)],
+                          fill=(*grid_color, 50), width=1)
+                draw.line([(x, cy), (x + cell_size, cy)],
+                          fill=(*grid_color, 50), width=1)
+
+    @staticmethod
+    def _draw_red_margin(draw):
         x = Config.RED_LINE_X
         draw.line([(x, 8), (x, Config.PAGE_H - 8)],
                   fill=Config.RED_LINE, width=2)
         draw.line([(x + 3, 8), (x + 3, Config.PAGE_H - 8)],
                   fill=Config.RED_LINE, width=1)
 
-    def add_texture(self, img):
-        """Add paper grain and aging"""
+    @staticmethod
+    def add_texture(img):
+        """Add paper grain, aging, and edge shadow"""
         arr = np.array(img).astype(np.float32)
-
         # Paper fiber noise
         noise = np.random.normal(0, 2.5, arr.shape)
         arr += noise
-
-        # Slight warm gradient (top lighter, bottom slightly darker)
+        # Slight warm gradient
         grad = np.linspace(0, -1.5, Config.PAGE_H).reshape(-1, 1, 1)
         grad = np.broadcast_to(grad, arr.shape)
         arr += grad
-
-        # Very subtle color temperature variation
+        # Color temperature variation
         arr[:, :, 0] += np.random.normal(0, 0.5, (Config.PAGE_H, Config.PAGE_W))
         arr[:, :, 2] -= np.random.normal(0, 0.3, (Config.PAGE_H, Config.PAGE_W))
-
         arr = np.clip(arr, 0, 255).astype(np.uint8)
         result = Image.fromarray(arr)
 
@@ -248,18 +369,56 @@ class PageBuilder:
         return result.convert('RGB')
 
 
-# ===================== SECTION RENDERER =====================
+# ===================== SCRIBBLE ENGINE =====================
+def add_scribbles(draw, hw, prob, ink_color):
+    """Add random correction/scribble marks"""
+    if prob <= 0:
+        return
+    count = int(prob * 15)
+    W, H = Config.PAGE_W, Config.PAGE_H
+    mx = Config.RED_LINE_X
+
+    for _ in range(count):
+        sx = mx + 40 + random.random() * (W - mx - 80)
+        sy = Config.MARGIN_TOP + random.random() * (H - Config.MARGIN_TOP - 60)
+        stype = random.randint(0, 2)
+        alpha = random.randint(60, 150)
+        c = (*ink_color[:3], alpha) if len(ink_color) >= 3 else ink_color
+
+        if stype == 0:
+            # Small scribble circle
+            r = 5 + random.random() * 12
+            pts = []
+            for a in [i * 0.4 for i in range(int(math.pi * 2 / 0.4) + 1)]:
+                rx = sx + math.cos(a) * r + (random.random() - 0.5) * 4
+                ry = sy + math.sin(a) * r + (random.random() - 0.5) * 4
+                pts.append((rx, ry))
+            if len(pts) > 2:
+                draw.line(pts, fill=c, width=1)
+        elif stype == 1:
+            # Cross-out
+            draw.line([(sx - 8, sy - 4), (sx + 8, sy + 4)], fill=c, width=1)
+            draw.line([(sx - 8, sy + 4), (sx + 8, sy - 4)], fill=c, width=1)
+        else:
+            # Wavy line
+            pts = []
+            for dx in range(-15, 16, 2):
+                wx = sx + dx
+                wy = sy + math.sin(dx * 0.5) * 2
+                pts.append((wx, wy))
+            if len(pts) > 1:
+                draw.line(pts, fill=c, width=1)
+
+
+# ==================== SECTION RENDERER =====================
 def render_box(draw, hw, title, lines, x, y, max_w, line_sp):
-    """Render a bordered section (板书设计 / 课后反思)"""
     pad = Config.BOX_PAD
     inner_w = max_w - pad * 2
 
-    # Wrap content
     wrapped = []
     for line in lines:
         wrapped.extend(hw.wrap(line, inner_w - 10))
 
-    # Calculate box dimensions
     title_h = hw.fs + 4
     content_h = len(wrapped) * int(line_sp * 0.88)
     box_h = title_h + content_h + pad * 2 + 6
@@ -268,7 +427,6 @@ def render_box(draw, hw, title, lines, x, y, max_w, line_sp):
     bx = int(x - pad // 2)
     by = int(y - hw.fs - pad // 2)
 
-    # Draw box
     draw.rounded_rectangle(
         [bx, by, bx + int(box_w), by + int(box_h)],
         radius=int(Config.BOX_RADIUS),
@@ -276,24 +434,18 @@ def render_box(draw, hw, title, lines, x, y, max_w, line_sp):
         width=int(Config.BOX_WIDTH)
     )
 
-    # Centered title
     tw = hw.text_width(title, hw.font_b)
     tx = int(bx + (box_w - tw) / 2)
-    draw.text((tx, by + pad // 2 + 1), title,
-              font=hw.font_b, fill=Config.INK_BLUE)
+    draw.text((tx, by + pad // 2 + 1), title, font=hw.font_b, fill=Config.INK_BLUE)
 
-    # Content
     cy = by + title_h + pad + 4
     for line in wrapped:
         if not line.strip():
             cy += int(line_sp * 0.4)
             continue
         is_diagram = '→' in line or '｜' in line or line.startswith('看到')
-        indent = 0 if is_diagram else 8
-        font = hw.font if not is_diagram else hw.font
-        color = Config.INK_BLUE_DARK if is_diagram else None
         hw.draw_line(draw, line, x + pad // 2 + 4, cy,
-                    int(inner_w - 8), font=font, color=color, indent=indent)
+                     int(inner_w - 8), indent=0 if is_diagram else 8)
         cy += int(line_sp * 0.88)
 
     return int(box_h)
@@ -301,14 +453,14 @@ def render_box(draw, hw, title, lines, x, y, max_w, line_sp):
 
 # ===================== FRONT PAGE RENDERER =====================
 def render_front(lesson, hw):
-    """Render front side of lesson plan (title, goals, keypoints, main content)"""
-    pb = PageBuilder(hw)
-    img, draw = pb.new_page()
+    pb = PaperBuilder()
+    img = pb.create_page(hw.style)
+    draw = ImageDraw.Draw(img)
 
     x = Config.TEXT_X
     y = Config.MARGIN_TOP
     max_w = Config.TEXT_MAX_W
-    lsp = Config.LINE_SPACING
+    lsp = int(Config.LINE_SPACING * hw.style.line_spacing_mult)
 
     title = lesson.get('title', '')
     lesson_type = lesson.get('type', '新授课')
@@ -316,61 +468,48 @@ def render_front(lesson, hw):
     keypoints = lesson.get('keypoints', '')
     content = lesson.get('front_content', '')
 
-    # ── Title row ──
+    # Title
     hw.draw_line(draw, f'课题  {title}', x, y, max_w, font=hw.font_b)
     y += lsp
-
-    # ── Type + divider ──
     hw.draw_line(draw, f'课型：{lesson_type}', x, y, max_w)
     y += lsp
-    draw.line([(x, y - 3), (x + max_w, y - 3)],
-              fill=Config.INK_BLUE, width=1)
+    draw.line([(x, y - 3), (x + max_w, y - 3)], fill=hw.style.ink_rgb, width=1)
     y += int(lsp * 0.45)
 
-    # ── Goals (紧凑排版) ──
+    # Goals
     hw.draw_line(draw, '教学目标', x, y, max_w, font=hw.font_b)
     y += lsp
     for line in hw.wrap(goals, max_w - 15):
-        remaining = Config.PAGE_H - Config.MARGIN_BOTTOM - 40
-        if y > remaining:
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 40:
             hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
             break
         hw.draw_line(draw, line, x + 12, y, max_w - 15)
         y += int(lsp * 0.88)
-
     y += int(lsp * 0.35)
 
-    # ── Keypoints ──
+    # Keypoints
     hw.draw_line(draw, '教学重难点', x, y, max_w, font=hw.font_b)
     y += lsp
     for line in hw.wrap(keypoints, max_w - 15):
-        remaining = Config.PAGE_H - Config.MARGIN_BOTTOM - 40
-        if y > remaining:
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 40:
             hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
             break
         hw.draw_line(draw, line, x + 12, y, max_w - 15)
         y += int(lsp * 0.88)
-
     y += int(lsp * 0.35)
 
-    # ── Main teaching process ──
+    # Teaching process
     hw.draw_line(draw, '教学过程', x, y, max_w, font=hw.font_b)
     y += lsp
-
     for raw_line in content.split('\n'):
         stripped = raw_line.strip()
         if not stripped:
             y += int(lsp * 0.3)
             continue
-
-        remaining = Config.PAGE_H - Config.MARGIN_BOTTOM - 30
-        if y > remaining:
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 30:
             hw.draw_line(draw, '（续背面）', x, y, max_w, font=hw.font_s)
             break
-
-        # Detect heading lines
         is_heading = bool(re.match(r'^[一二三四五六七八九十]+[、，]', stripped))
-
         wrapped = hw.wrap(stripped, max_w - (15 if not is_heading else 0))
         for wl in wrapped:
             if is_heading:
@@ -379,24 +518,26 @@ def render_front(lesson, hw):
                 hw.draw_line(draw, wl, x + 15, y, max_w - 15)
             y += lsp
 
+    # Scribbles
+    add_scribbles(draw, hw, hw.style.scribble_prob, hw.style.ink_rgb)
+
     img = pb.add_texture(img)
     return img
 
 
 # ===================== BACK PAGE RENDERER =====================
 def render_back(lesson, hw):
-    """Render back side (continuation, board design, reflection)"""
-    pb = PageBuilder(hw)
-    img, draw = pb.new_page()
+    pb = PaperBuilder()
+    img = pb.create_page(hw.style)
+    draw = ImageDraw.Draw(img)
 
     x = Config.TEXT_X
     y = Config.MARGIN_TOP
     max_w = Config.TEXT_MAX_W
-    lsp = Config.LINE_SPACING
+    lsp = int(Config.LINE_SPACING * hw.style.line_spacing_mult)
 
     content = lesson.get('back_content', '')
 
-    # ── Continuation marker ──
     hw.draw_line(draw, '（续前页）', x, y, max_w, font=hw.font_b)
     y += int(lsp * 1.3)
 
@@ -415,23 +556,20 @@ def render_back(lesson, hw):
                 y += int(lsp * 0.3)
             continue
 
-        remaining = Config.PAGE_H - Config.MARGIN_BOTTOM - 30
-        if y > remaining:
+        if y > Config.PAGE_H - Config.MARGIN_BOTTOM - 30:
             if in_section and section_lines:
                 render_box(draw, hw, section_title, section_lines,
-                          x, section_y, max_w, lsp)
+                           x, section_y, max_w, lsp)
             hw.draw_line(draw, '（完）', x, y, max_w, font=hw.font_s)
             break
 
-        # Detect section headers
         is_section = False
         for kw in ['板书设计', '课后反思', '教学反思', '作业设计', '板书']:
             if kw in stripped and len(stripped) < len(kw) + 5:
                 is_section = True
-                # Flush previous section
                 if in_section and section_lines:
                     bh = render_box(draw, hw, section_title, section_lines,
-                                   x, section_y, max_w, lsp)
+                                    x, section_y, max_w, lsp)
                     y = section_y + bh + int(lsp * 1.2)
                 in_section = True
                 section_title = kw
@@ -454,45 +592,43 @@ def render_back(lesson, hw):
                     hw.draw_line(draw, wl, x + 15, y, max_w - 15)
                 y += lsp
 
-    # Render final section
     if in_section and section_lines:
         render_box(draw, hw, section_title, section_lines,
-                  x, section_y, max_w, lsp)
+                   x, section_y, max_w, lsp)
+
+    # Scribbles
+    add_scribbles(draw, hw, hw.style.scribble_prob, hw.style.ink_rgb)
 
     img = pb.add_texture(img)
     return img
 
 
-# ===================== DOCX / DOC READER =====================
+# ===================== DOCX READER =====================
 def read_lesson_file(file_path):
     """Read lesson plan from .docx or .doc file"""
     ext = os.path.splitext(file_path)[1].lower()
-
     result = {
         'title': '', 'type': '新授课',
         'goals': '', 'keypoints': '',
         'front_content': '', 'back_content': '',
     }
 
-    if ext == '.docx':
+    if ext == '.docx' and HAS_DOCX:
         try:
-            from docx import Document
             doc = Document(file_path)
             full_text = '\n'.join(p.text for p in doc.paragraphs if p.text.strip())
             return _parse_lesson_text(full_text, result)
         except Exception as e:
             print(f"DOCX read error: {e}")
 
-    # .doc fallback: extract text from binary
+    # Fallback: binary extraction
     try:
         with open(file_path, 'rb') as f:
             data = f.read()
-
         best_text = ''
         for enc in ['utf-16-le', 'gb18030', 'gbk', 'gb2312', 'utf-8']:
             try:
                 text = data.decode(enc, errors='ignore')
-                # Keep only meaningful Chinese text segments
                 segments = re.findall(
                     r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\w\s，。、；：！？\u201c\u201d\u2018\u2019（）\d.\-\(\)]+',
                     text
@@ -503,7 +639,6 @@ def read_lesson_file(file_path):
                     best_text = joined
             except Exception:
                 continue
-
         if best_text:
             return _parse_lesson_text(best_text, result)
     except Exception as e:
@@ -522,22 +657,22 @@ def _parse_lesson_text(text, result):
         if not line:
             continue
 
-        # Detect title (look for 课题 keyword)
         m = re.search(r'课题[：:\s]*([^\r\n]{2,20})', line)
         if m and not result['title']:
             raw_title = m.group(1).strip()
-            # Clean title: keep only the lesson name part
             raw_title = re.split(r'[板块一二三四五六七八九十]', raw_title)[0].strip()
             if raw_title:
                 result['title'] = raw_title
             continue
 
-        # Detect section switches
         if re.search(r'教学目标|教学目的', line) and len(line) < 15:
             current = 'goals'
             continue
         if re.search(r'教学重[点难点]|重难点|重点难点', line) and len(line) < 20:
             current = 'keypoints'
+            continue
+        if re.search(r'教学过程|教学步骤', line) and len(line) < 15:
+            current = 'front_content'
             continue
         if '板书设计' in line or '板书' == line.strip():
             current = 'back_content'
@@ -547,9 +682,6 @@ def _parse_lesson_text(text, result):
             current = 'back_content'
             result[current] += line + '\n'
             continue
-        if re.search(r'教学过程|教学步骤', line) and len(line) < 15:
-            current = 'front_content'
-            continue
 
         result[current] += line + '\n'
 
@@ -557,25 +689,13 @@ def _parse_lesson_text(text, result):
 
 
 # ===================== HIGH-LEVEL API =====================
-def generate(lesson_data, output_dir='output', font_path=None, font_size=24):
+def generate(lesson_data, output_dir='output', style=None):
     """Generate double-sided lesson plan images"""
     os.makedirs(output_dir, exist_ok=True)
-
-    # Use custom font if provided
-    if font_path and os.path.exists(font_path):
-        try:
-            hw = Handwriter.__new__(Handwriter)
-            hw.fs = font_size
-            hw.font = ImageFont.truetype(font_path, font_size)
-            hw.font_b = ImageFont.truetype(font_path, font_size + 2)
-            hw.font_s = ImageFont.truetype(font_path, font_size - 2)
-        except Exception:
-            hw = Handwriter(font_size)
-    else:
-        hw = Handwriter(font_size)
+    style = style or HandwritingStyle()
+    hw = Handwriter(style)
 
     title = re.sub(r'[\\/:*?"<>|\r\n]', '_', lesson_data.get('title', 'untitled'))
-    # Keep filename short
     title = title[:30].strip('_. ')
 
     print(f"  渲染正面: {title}")
@@ -591,7 +711,7 @@ def generate(lesson_data, output_dir='output', font_path=None, font_size=24):
     return {'front': front_path, 'back': back_path, 'title': title}
 
 
-def batch(input_dir, output_dir='output', font_size=24):
+def batch(input_dir, output_dir='output', style=None):
     """Batch process all .doc/.docx files"""
     files = glob.glob(os.path.join(input_dir, '*.doc')) + \
             glob.glob(os.path.join(input_dir, '*.docx'))
@@ -607,7 +727,7 @@ def batch(input_dir, output_dir='output', font_size=24):
         try:
             data = read_lesson_file(fpath)
             if data.get('front_content') or data.get('back_content'):
-                r = generate(data, output_dir, font_size=font_size)
+                r = generate(data, output_dir, style=style)
                 results.append(r)
             else:
                 print("  跳过: 未提取到内容")
@@ -618,7 +738,6 @@ def batch(input_dir, output_dir='output', font_size=24):
     return results
 
 
-# ===================== DEMO =====================
 def demo():
     """Generate demo based on real sample lesson plan"""
     lesson = {
@@ -668,7 +787,7 @@ def demo():
             '六、总结全文，拓展延伸\n'
             '1.用自己的话说说课文的主要内容。\n'
             '2.体会作者对天窗的感情，感受天窗给孩子们带来的快乐。\n'
-            '3.拓展：你有没有类似的经历？在无聊或孤独的时候，是什么给了你快乐和想象？\n'
+            '3.拓展：你有没有类似的经历？\n'
             '板书设计\n'
             '天窗\n'
             '屋子→天窗→想象\n'
@@ -691,21 +810,57 @@ def demo():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        if sys.argv[1] == 'batch' and len(sys.argv) > 2:
-            batch(sys.argv[2])
-        elif sys.argv[1] == 'docx' and len(sys.argv) > 2:
-            data = read_lesson_file(sys.argv[2])
-            generate(data)
-        elif sys.argv[1] == 'doc' and len(sys.argv) > 2:
-            data = read_lesson_file(sys.argv[2])
-            print(json.dumps({k: v[:100]+'...' if len(v)>100 else v
-                              for k, v in data.items()}, ensure_ascii=False, indent=2))
-        else:
-            print("用法:")
-            print("  python render_engine.py              # 生成演示")
-            print("  python render_engine.py batch <目录>  # 批量处理")
-            print("  python render_engine.py docx <文件>   # 单文件处理")
-            print("  python render_engine.py doc <文件>    # 预览提取内容")
+    parser = argparse.ArgumentParser(description='教案手写仿真系统 v3.0')
+    parser.add_argument('command', nargs='?', default='demo',
+                        choices=['demo', 'batch', 'docx', 'doc'],
+                        help='运行模式')
+    parser.add_argument('path', nargs='?', help='文件或目录路径')
+    parser.add_argument('--output', '-o', default='output', help='输出目录')
+    parser.add_argument('--font-size', type=int, default=24, help='字号')
+    parser.add_argument('--position-disorder', type=float, default=0.0,
+                        help='文字位置凌乱度 (0.0-1.0)')
+    parser.add_argument('--stroke-disorder', type=float, default=0.0,
+                        help='字体笔画凌乱度 (0.0-1.0)')
+    parser.add_argument('--scribble', type=float, default=0.0,
+                        help='随机勾画涂改概率 (0.0-0.30)')
+    parser.add_argument('--ink', default='blue',
+                        choices=['blue', 'blue2', 'black', 'red'],
+                        help='墨水颜色')
+    parser.add_argument('--paper', default='lined',
+                        choices=['lined', 'grid', 'plain', 'cream'],
+                        help='纸张类型')
+    parser.add_argument('--font', default='kai',
+                        help='字体 (kai/fang/hei 或自定义字体路径)')
+    parser.add_argument('--custom-paper', help='自定义纸张图片路径')
+
+    args = parser.parse_args()
+
+    style = HandwritingStyle()
+    style.font_size = args.font_size
+    style.position_disorder = args.position_disorder
+    style.stroke_disorder = args.stroke_disorder
+    style.scribble_prob = min(args.scribble, 0.30)
+    style.ink_color = args.ink
+    style.paper_type = args.paper
+
+    if os.path.exists(args.font):
+        style.custom_font_path = args.font
     else:
+        style.font_name = args.font
+
+    if args.custom_paper and os.path.exists(args.custom_paper):
+        style.custom_paper_path = args.custom_paper
+
+    if args.command == 'demo':
         demo()
+    elif args.command == 'batch' and args.path:
+        batch(args.path, args.output, style=style)
+    elif args.command == 'docx' and args.path:
+        data = read_lesson_file(args.path)
+        generate(data, args.output, style=style)
+    elif args.command == 'doc' and args.path:
+        data = read_lesson_file(args.path)
+        print(json.dumps({k: v[:100] + '...' if len(v) > 100 else v
+                          for k, v in data.items()}, ensure_ascii=False, indent=2))
+    else:
+        parser.print_help()

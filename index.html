@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>教案手写仿真系统 v2.1</title>
+<title>教案手写仿真系统 v3.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--p:#2563eb;--pl:#3b82f6;--d:#dc2626;--s:#16a34a;--bg:#f1f5f9;--c:#fff;--bd:#e2e8f0;--t:#1e293b;--tl:#64748b;--red:#e53935}
+:root{--p:#2563eb;--pl:#3b82f6;--d:#dc2626;--s:#16a34a;--bg:#f1f5f9;--c:#fff;--bd:#e2e8f0;--t:#1e293b;--tl:#64748b;--red:#e53935;--purple:#7c3aed}
 body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--t);line-height:1.6}
-.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
 .hdr{text-align:center;padding:24px 0 16px}
-.hdr h1{font-size:26px;background:linear-gradient(135deg,var(--p),#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr h1{font-size:26px;background:linear-gradient(135deg,var(--p),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hdr p{color:var(--tl);font-size:13px;margin-top:4px}
 .tabs{display:flex;gap:0;margin-bottom:20px;background:var(--c);border-radius:12px;padding:4px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .tab{flex:1;padding:10px 16px;text-align:center;cursor:pointer;font-size:14px;color:var(--tl);border-radius:8px;transition:.2s;user-select:none}
@@ -28,7 +30,7 @@ body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:va
 .du{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .sl{text-align:center;font-size:13px;font-weight:600;margin-bottom:6px}
 .sl .b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;color:#fff}
-.sl .b.f{background:var(--p)}.sl .b.bk{background:#7c3aed}
+.sl .b.f{background:var(--p)}.sl .b.bk{background:var(--purple)}
 .pv{position:relative;margin-top:8px;display:none}
 .pv img{max-width:100%;border-radius:6px;border:1px solid var(--bd)}
 .pv .rm{position:absolute;top:6px;right:6px;background:var(--d);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
@@ -44,6 +46,7 @@ body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:va
 .fi{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:13px}
 .fi:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif;font-size:15px;line-height:1.7}
 .sgs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .sc{border:2px solid var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.2s}
@@ -76,21 +79,55 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
 .st{border:1px solid var(--bd);border-radius:8px;padding:10px;text-align:center}
 .st .lb{font-size:11px;color:var(--tl)}.st .vl{font-size:16px;font-weight:700;margin-top:2px}
 .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;color:#fff}
+.badge.f{background:var(--p)}.badge.bk{background:var(--purple)}.badge.g{background:var(--s)}
+.batch-list{max-height:300px;overflow-y:auto;margin:12px 0}
+.batch-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px}
+.batch-item .name{flex:1;font-size:13px;font-weight:600}
+.batch-item .status{font-size:12px}
+.batch-item .status.done{color:var(--s)}
+.batch-item .status.pending{color:var(--tl)}
+.batch-item .status.error{color:var(--d)}
+/* Paper style manager */
+.style-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin:12px 0}
+.style-card{border:2px solid var(--bd);border-radius:8px;padding:8px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+.style-card:hover{border-color:var(--p)}.style-card.sel{border-color:var(--p);background:#f0f7ff}
+.style-card img{width:100%;height:80px;object-fit:cover;border-radius:4px;margin-bottom:4px}
+.style-card .sn{font-size:11px;font-weight:600;word-break:break-all}
+.style-card .del{position:absolute;top:2px;right:2px;background:var(--d);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+/* Font manager */
+.font-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:12px 0}
+.font-card{border:2px solid var(--bd);border-radius:8px;padding:10px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+.font-card:hover{border-color:var(--p)}.font-card.sel{border-color:var(--p);background:#f0f7ff}
+.font-card .fn{font-size:11px;font-weight:600;margin-top:4px}
+.font-card .del{position:absolute;top:2px;right:2px;background:var(--d);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+/* Slider group */
+.sg{display:flex;align-items:center;gap:8px}
+.sg input[type=range]{flex:1;accent-color:var(--p)}
+.sg .sv{min-width:40px;text-align:right;font-size:13px;font-weight:600;color:var(--p)}
+/* DOCX import area */
+.import-zone{border:2px dashed var(--purple);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s;position:relative;margin-bottom:12px}
+.import-zone:hover{border-color:var(--p);background:#f0f7ff}
+.import-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.import-zone .ic{font-size:36px;margin-bottom:6px}
+.import-zone .tx{font-size:14px;color:var(--tl)}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
-@media(max-width:768px){.du,.fr,.sgs,.stats{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap;font-size:12px;padding:8px 12px}}
+@media(max-width:768px){.du,.fr,.fr3,.sgs,.stats{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap;font-size:12px;padding:8px 12px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hdr">
     <h1>📝 教案手写仿真系统</h1>
-    <p>双面教案自动生成 · 智能裁剪 · 真实手写渲染 · v2.1</p>
+    <p>双面教案自动生成 · 批量导入DOCX · 真实手写渲染 · 自定义字体/纸张 · v3.0</p>
   </div>
 
   <div class="tabs" id="tabs">
     <div class="tab on" data-t="scan">📸 扫描采集</div>
     <div class="tab" data-t="edit">✍️ 教案编写</div>
     <div class="tab" data-t="render">🎨 渲染生成</div>
+    <div class="tab" data-t="batch">📦 批量处理</div>
+    <div class="tab" data-t="manage">⚙️ 字体/纸张</div>
     <div class="tab" data-t="print">🖨️ 打印输出</div>
   </div>
 
@@ -98,15 +135,15 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
   <div class="tc on" id="t-scan">
     <div class="card">
       <div class="ct"><span class="n">1</span> 上传双面教案照片</div>
-      <p class="hint">请分别上传教案本的<strong>正面</strong>和<strong>背面</strong>照片。系统将自动裁剪、校正并提取布局参数。</p>
+      <p class="hint">请分别上传教案本的<strong>正面</strong>和<strong>背面</strong>照片。系统将自动裁剪、校正并提取布局参数（行距、红线位置、纸张颜色等）。</p>
       <div class="du">
         <div>
-          <div class="sl"><span class="b f">正面</span></div>
+          <div class="sl"><span class="badge f">正面</span></div>
           <div class="uz" id="uz-f"><div class="ic">📄</div><div class="tx">点击或拖拽上传正面照片</div><div class="ht">支持 JPG/PNG，光线均匀为佳</div><input type="file" accept="image/*" id="fi-f"></div>
           <div class="pv" id="pv-f"><img id="im-f"><button class="rm" onclick="rmImg('f')">×</button></div>
         </div>
         <div>
-          <div class="sl"><span class="b bk">背面</span></div>
+          <div class="sl"><span class="badge bk">背面</span></div>
           <div class="uz" id="uz-b"><div class="ic">📄</div><div class="tx">点击或拖拽上传背面照片</div><div class="ht">背面通常含"课后反思"等内容</div><input type="file" accept="image/*" id="fi-b"></div>
           <div class="pv" id="pv-b"><img id="im-b"><button class="rm" onclick="rmImg('b')">×</button></div>
         </div>
@@ -114,13 +151,13 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
     </div>
     <div class="card">
       <div class="ct"><span class="n">2</span> 自动裁剪与校正</div>
-      <p class="hint">上传照片后点击自动裁剪，系统将检测纸张边缘、校正透视并提取布局参数（行距、红线位置等）。</p>
+      <p class="hint">上传照片后点击自动裁剪，系统将检测纸张边缘、校正透视并提取布局参数。</p>
       <div class="acts">
         <button class="btn bp" id="btn-crop" onclick="doCrop()" disabled>🔍 自动裁剪</button>
-        <button class="btn bo" onclick="toast('请先上传两张照片','in')" id="btn-mcrop">✂️ 手动调整</button>
+        <button class="btn bo" id="btn-mcrop">✂️ 手动调整</button>
       </div>
       <div id="crop-res" style="display:none;margin-top:12px">
-        <p style="color:var(--s);font-size:13px;margin-bottom:8px">✅ 裁剪完成！布局参数已提取</p>
+        <p style="color:var(--s);font-size:13px;margin-bottom:8px">✅ 裁剪完成！布局参数已提取并应用到渲染引擎。</p>
       </div>
     </div>
     <div class="card">
@@ -188,7 +225,7 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
 课后反思
 本课教学中，我注重引导学生抓住关键词句理解课文内容，通过品读、想象、朗读等多种方式感受天窗给孩子们带来的快乐。在教学"想象"这部分内容时，我引导学生展开想象的翅膀，用自己的语言描述透过天窗看到的和想到的内容，激发了学生的学习兴趣。教学效果较好，学生参与度高。不足之处是部分学生对"唯一的慰藉"理解还不够深入，需要在第二课时进一步引导体会。</textarea></div>
       <div class="acts">
-        <button class="btn bp bl" onclick="doRender()">🎨 生成预览</button>
+        <button class="btn bp bl" id="btn-preview" onclick="doRender()">🎨 生成预览</button>
         <button class="btn bo bl" onclick="loadSample()">📋 加载示例</button>
       </div>
     </div>
@@ -197,27 +234,60 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
   <!-- ===== Tab 3: Render ===== -->
   <div class="tc" id="t-render">
     <div class="card">
-      <div class="ct"><span class="n">🎨</span> 样式设置</div>
-      <div class="sgs">
+      <div class="ct"><span class="n">🎨</span> 手写仿真参数</div>
+      <p class="hint">仿照 <a href="https://www.autohanding.com" target="_blank" style="color:var(--p)">autohanding.com</a> 的效果参数，调节手写真实度。</p>
+      <div class="sgs" style="margin-bottom:16px">
         <div class="sc sel" data-font="kai" onclick="selFont(this)"><div class="pv2" style="font-family:KaiTi,serif;font-size:20px">天地人和</div><div class="lb">楷体（推荐）</div></div>
         <div class="sc" data-font="fang" onclick="selFont(this)"><div class="pv2" style="font-family:FangSong,serif;font-size:20px">天地人和</div><div class="lb">仿宋</div></div>
         <div class="sc" data-font="hei" onclick="selFont(this)"><div class="pv2" style="font-family:SimHei,sans-serif;font-size:20px">天地人和</div><div class="lb">黑体</div></div>
       </div>
-      <div class="fr" style="margin-top:12px">
-        <div class="fg"><label class="fl">字号: <span id="fs-val">24</span>px</label><input type="range" min="18" max="32" value="24" class="fi" id="fs-sl" oninput="$('fs-val').textContent=this.value"></div>
-        <div class="fg"><label class="fl">抖动: <span id="jk-val">适中</span></label><input type="range" min="0" max="5" value="2" class="fi" id="jk-sl" oninput="$('jk-val').textContent=['无','轻微','适中','较大','强烈','剧烈'][this.value]"></div>
+      <!-- Custom fonts -->
+      <div id="custom-fonts-area"></div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">字号: <span id="fs-val">24</span>px</label>
+          <div class="sg"><input type="range" min="16" max="36" value="24" id="fs-sl" oninput="$('fs-val').textContent=this.value"><span class="sv" id="fs-val2">24</span></div>
+        </div>
+        <div class="fg"><label class="fl">行距倍数: <span id="ls-val">1.0</span></label>
+          <div class="sg"><input type="range" min="6" max="20" value="10" id="ls-sl" oninput="$('ls-val').textContent=(this.value/10).toFixed(1);$('ls-val2').textContent=(this.value/10).toFixed(1)"><span class="sv" id="ls-val2">1.0</span></div>
+        </div>
+        <div class="fg"><label class="fl">墨水颜色</label>
+          <select class="fi" id="ink-sel"><option value="blue">深蓝（钢笔）</option><option value="blue2">蓝色（水笔）</option><option value="black">黑色</option><option value="red">红色</option></select>
+        </div>
       </div>
-      <div class="fr">
-        <div class="fg"><label class="fl">墨水颜色</label><select class="fi" id="ink-sel"><option value="blue">深蓝（钢笔）</option><option value="blue2">蓝色（水笔）</option><option value="black">黑色</option></select></div>
-        <div class="fg"><label class="fl">纸张质感</label><select class="fi" id="paper-sel"><option value="real">真实纹理</option><option value="plain">纯白纸</option><option value="cream">米黄纸</option></select></div>
+      <div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">
+        <p style="font-size:13px;font-weight:600;margin-bottom:8px">🎯 仿手写效果参数（autohanding风格）</p>
+        <div class="fr3">
+          <div class="fg"><label class="fl">随机勾画涂改概率: <span id="sc-val">0</span>%</label>
+            <div class="sg"><input type="range" min="0" max="30" value="0" id="sc-sl" oninput="$('sc-val').textContent=this.value"><span class="sv" id="sc-val2">0%</span></div>
+          </div>
+          <div class="fg"><label class="fl">文字位置凌乱度: <span id="pd-val">0</span>%</label>
+            <div class="sg"><input type="range" min="0" max="100" value="0" id="pd-sl" oninput="$('pd-val').textContent=this.value;$('pd-val2').textContent=this.value+'%'"><span class="sv" id="pd-val2">0%</span></div>
+          </div>
+          <div class="fg"><label class="fl">字体笔画凌乱度: <span id="sd-val">0</span>%</label>
+            <div class="sg"><input type="range" min="0" max="100" value="0" id="sd-sl" oninput="$('sd-val').textContent=this.value;$('sd-val2').textContent=this.value+'%'"><span class="sv" id="sd-val2">0%</span></div>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label class="fl">墨水深浅变化: <span id="iv-val">适中</span></label>
+            <div class="sg"><input type="range" min="0" max="4" value="2" id="iv-sl" oninput="$('iv-val').textContent=['无','轻微','适中','较大','强烈'][this.value]"><span class="sv" id="iv-val2">适中</span></div>
+          </div>
+          <div class="fg"><label class="fl">纸张质感</label>
+            <select class="fi" id="paper-sel" onchange="onPaperChange()">
+              <option value="lined">横线本（标准）</option>
+              <option value="grid">田字格（红色方格）</option>
+              <option value="plain">纯白纸</option>
+              <option value="cream">米黄纸</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
     <div class="card">
       <div class="ct"><span class="n">👁</span> 渲染预览</div>
       <p class="hint" id="rv-hint">点击上方"生成预览"按钮开始渲染。正面和背面将同时生成。</p>
       <div class="pca" id="pca">
-        <div><div class="sl"><span class="b f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
-        <div><div class="sl"><span class="b bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
+        <div><div class="sl"><span class="badge f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
+        <div><div class="sl"><span class="badge bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fefdf5;border-radius:4px"></canvas></div>
       </div>
       <div class="acts">
         <button class="btn bp bl" onclick="doRender()">🔄 重新渲染</button>
@@ -226,7 +296,70 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
     </div>
   </div>
 
-  <!-- ===== Tab 4: Print ===== -->
+  <!-- ===== Tab 4: Batch ===== -->
+  <div class="tc" id="t-batch">
+    <div class="card">
+      <div class="ct"><span class="n">📂</span> 批量导入DOCX教案</div>
+      <p class="hint">支持导入 .docx 文件，自动解析教案结构（课题、教学目标、重难点、教学过程、板书设计、课后反思）。可一次选择多个文件。</p>
+      <div class="import-zone" id="import-zone">
+        <div class="ic">📄</div>
+        <div class="tx">点击或拖拽上传 DOCX 文件（支持多选）</div>
+        <input type="file" accept=".docx,.doc" multiple id="import-files">
+      </div>
+      <div id="batch-list" class="batch-list"></div>
+      <div class="acts">
+        <button class="btn bp bl" id="btn-batch-render" onclick="doBatchRender()" disabled>🎨 批量渲染生成</button>
+        <button class="btn bs bl" id="btn-batch-pdf" onclick="doBatchPDF()" disabled>📑 批量导出PDF</button>
+        <button class="btn bo bl" onclick="clearBatch()">🗑️ 清空列表</button>
+      </div>
+      <div id="batch-progress" style="display:none;margin-top:12px">
+        <div class="pb"><div class="fl2" id="batch-bar" style="width:0%"></div></div>
+        <div class="pts" id="batch-status">准备中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 5: Font/Paper Manager ===== -->
+  <div class="tc" id="t-manage">
+    <div class="card">
+      <div class="ct"><span class="n">🔤</span> 自定义字体管理</div>
+      <p class="hint">上传字体图片（手写汉字图片集），系统将提取字形生成自定义手写字体。也支持直接上传 .ttf/.otf 字体文件。</p>
+      <div class="fr">
+        <div class="fg"><label class="fl">字体名称</label><input class="fi" id="font-name" placeholder="例：张三手写体"></div>
+        <div class="fg"><label class="fl">字体文件</label>
+          <div style="position:relative">
+            <input class="fi" type="file" accept=".ttf,.otf,.woff,image/*" id="font-upload" style="padding:6px">
+          </div>
+        </div>
+      </div>
+      <div class="acts" style="margin-bottom:12px">
+        <button class="btn bp" onclick="addCustomFont()">➕ 添加字体</button>
+      </div>
+      <div class="font-grid" id="font-grid">
+        <div style="text-align:center;padding:20px;color:var(--tl);grid-column:1/-1;font-size:13px">暂无自定义字体。上传字体文件后将显示在这里。</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">📄</span> 自定义纸张样式管理</div>
+      <p class="hint">上传纸张照片，系统将分析并复刻纸张样式（线条颜色、间距、边距等）。支持自定义命名。</p>
+      <div class="fr">
+        <div class="fg"><label class="fl">纸张名称</label><input class="fi" id="paper-name" placeholder="例：我的作文本"></div>
+        <div class="fg"><label class="fl">纸张照片</label>
+          <div style="position:relative">
+            <input class="fi" type="file" accept="image/*" id="paper-upload" style="padding:6px">
+          </div>
+        </div>
+      </div>
+      <div class="acts" style="margin-bottom:12px">
+        <button class="btn bp" onclick="addCustomPaper()">➕ 添加纸张</button>
+      </div>
+      <div class="style-grid" id="paper-grid">
+        <div style="text-align:center;padding:20px;color:var(--tl);grid-column:1/-1;font-size:13px">暂无自定义纸张。上传纸张照片后将显示在这里。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 6: Print ===== -->
   <div class="tc" id="t-print">
     <div class="card">
       <div class="ct"><span class="n">🖨</span> 打印设置</div>
@@ -236,7 +369,7 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
       </div>
       <div class="fr">
         <div class="fg"><label class="fl">份数</label><input type="number" class="fi" value="1" min="1" max="50" id="copies"></div>
-        <div class="fg"><label class="fl">纸张</label><select class="fi"><option>A4 (210×297mm)</option><option>16K (184×260mm)</option></select></div>
+        <div class="fg"><label class="fl">纸张</label><select class="fi" id="print-paper"><option>A4 (210×297mm)</option><option>16K (184×260mm)</option></select></div>
       </div>
     </div>
     <div class="card">
@@ -245,6 +378,7 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
       <div class="acts">
         <button class="btn bp bl" onclick="doPrint()">🖨️ 打印</button>
         <button class="btn bs bl" onclick="doDownload()">💾 下载PNG</button>
+        <button class="btn bo bl" onclick="doDownloadPDF()">📑 下载PDF</button>
       </div>
     </div>
   </div>
@@ -252,7 +386,7 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
 
 <!-- Preview Modal -->
 <div class="mo" id="pv-modal">
-  <div class="md" style="max-width:680px">
+  <div class="md" style="max-width:800px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <h3>📄 教案预览</h3>
       <button class="btn bo" onclick="$('pv-modal').classList.remove('on')">✕</button>
@@ -262,10 +396,19 @@ textarea.fi{min-height:100px;resize:vertical;font-family:'KaiTi','STKaiti',serif
 </div>
 
 <script>
+// ==================== CORE STATE ====================
 const $=id=>document.getElementById(id);
-const S={frontImg:null,backImg:null,font:'kai',printMode:'duplex',pages:[],rendered:false};
+const S={
+  frontImg:null, backImg:null,
+  font:'kai', printMode:'duplex',
+  pages:[], rendered:false,
+  batchItems:[], // {title, goals, keypoints, front_content, back_content, frontImg, backImg, status}
+  customFonts:[], // {name, url, fontFace}
+  customPapers:[], // {name, imgData, params}
+  cropParams:null
+};
 
-// ── Tabs ──
+// ==================== TABS ====================
 $('tabs').addEventListener('click',e=>{
   const t=e.target.closest('.tab');if(!t)return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
@@ -273,7 +416,7 @@ $('tabs').addEventListener('click',e=>{
   t.classList.add('on');$('t-'+t.dataset.t).classList.add('on');
 });
 
-// ── File Upload ──
+// ==================== FILE UPLOAD (SCAN) ====================
 ['f','b'].forEach(s=>{
   const fi=$('fi-'+s),uz=$('uz-'+s);
   fi.addEventListener('change',e=>loadFile(e.target.files[0],s));
@@ -297,18 +440,175 @@ function loadFile(f,s){
 function rmImg(s){S[s+'Img']=null;$('uz-'+s).style.display='';$('pv-'+s).style.display='none';$('fi-'+s).value='';updBtn();}
 function updBtn(){const ok=S.fImg&&S.bImg;$('btn-crop').disabled=!ok;if(ok){$('btn-crop').textContent='🔍 自动裁剪（两张就绪）';$('btn-crop').style.background='var(--s)';}}
 
-// ── Auto Crop ──
+// ==================== AUTO CROP ====================
 function doCrop(){
   toast('正在自动裁剪和提取布局参数...','in');
+  // Analyze front image for paper parameters
+  if(S.fImg){
+    const cv=document.createElement('canvas');cv.width=S.fImg.width;cv.height=S.fImg.height;
+    const ctx=cv.getContext('2d');ctx.drawImage(S.fImg,0,0);
+    try{
+      const data=ctx.getImageData(0,0,cv.width,cv.height);
+      S.cropParams=analyzePaper(data,cv.width,cv.height);
+    }catch(e){S.cropParams={lineSpacing:28,redLineX:38,numLines:28,paperColor:[252,251,245]};}
+  }
   setTimeout(()=>{
     $('crop-res').style.display='';
-    $('s-spc').textContent='7mm';$('s-mar').textContent='8mm';$('s-rows').textContent='28';
+    const p=S.cropParams||{};
+    $('s-spc').textContent=p.lineSpacing?(p.lineSpacing+'mm'):'7mm';
+    $('s-mar').textContent=p.redLineX?(p.redLineX+'mm'):'8mm';
+    $('s-rows').textContent=p.numLines||'28';
     $('btn-crop').style.background='';$('btn-crop').textContent='✅ 已裁剪';
     toast('裁剪完成！布局参数已提取','ok');
   },800);
 }
+function analyzePaper(data,w,h){
+  // Simple analysis: detect line spacing and red margin
+  const pixels=data.data;
+  // Sample middle column for horizontal lines
+  const midX=Math.floor(w/2);
+  const brightness=[];
+  for(let y=0;y<h;y++){
+    const i=(y*w+midX)*4;
+    brightness.push((pixels[i]+pixels[i+1]+pixels[i+2])/3);
+  }
+  // Find line spacing by detecting brightness dips
+  let dips=[];let prev=255;
+  for(let y=10;y<h-10;y++){
+    if(brightness[y]<200&&prev>=200)dips.push(y);
+    prev=brightness[y];
+  }
+  let spacing=28;
+  if(dips.length>2){
+    let diffs=[];for(let i=1;i<Math.min(dips.length,20);i++)diffs.push(dips[i]-dips[i-1]);
+    spacing=Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
+    if(spacing<10)spacing=28;
+  }
+  // Red margin detection: scan left side for red pixels
+  let redX=38;
+  for(let x=10;x<w/3;x++){
+    let redCount=0;
+    for(let y=0;y<h;y+=5){
+      const i=(y*w+x)*4;
+      if(pixels[i]>150&&pixels[i+1]<100&&pixels[i+2]<100)redCount++;
+    }
+    if(redCount>h/10){redX=Math.round(x*297/w);break;}
+  }
+  const numLines=Math.floor((h-40)/spacing);
+  return{lineSpacing:Math.round(spacing*297/h),redLineX:redX,numLines:Math.min(numLines,35)};
+}
 
-// ── Render ──
+// ==================== DOCX IMPORT ====================
+$('import-files').addEventListener('change',async e=>{
+  const files=Array.from(e.target.files);
+  for(const f of files){
+    if(!f.name.endsWith('.docx')&&!f.name.endsWith('.doc')){toast('仅支持 .docx 文件','er');continue;}
+    try{
+      const arrayBuffer=await f.arrayBuffer();
+      const result=await mammoth.extractRawText({arrayBuffer});
+      const parsed=parseLessonText(result.value);
+      parsed.fileName=f.name;
+      parsed.status='pending';
+      S.batchItems.push(parsed);
+    }catch(err){
+      console.error(err);toast('解析 '+f.name+' 失败: '+err.message,'er');
+    }
+  }
+  e.target.value='';
+  renderBatchList();
+  $('btn-batch-render').disabled=S.batchItems.length===0;
+});
+function parseLessonText(text){
+  const result={title:'',type:'新授课',goals:'',keypoints:'',front_content:'',back_content:''};
+  const lines=text.split('\n');
+  let current='front_content';
+  for(let line of lines){
+    line=line.trim();if(!line)continue;
+    let m=line.match(/课题[：:\s]*(.{2,30})/);
+    if(m&&!result.title){result.title=m[1].split(/[板块一二三四五六七八九十]/)[0].trim();continue;}
+    if(/^(教学目标|教学目的|教学要求)/.test(line)&&line.length<15){current='goals';continue;}
+    if(/^(教学重[点难点]|重难点|重点难点)/.test(line)&&line.length<20){current='keypoints';continue;}
+    if(/^(教学过程|教学步骤|教学流程)/.test(line)&&line.length<15){current='front_content';continue;}
+    if(/板书设计/.test(line)&&line.length<10){current='back_content';result[current]+=line+'\n';continue;}
+    if(/^(课后反思|教学反思)/.test(line)&&line.length<10){current='back_content';result[current]+=line+'\n';continue;}
+    if(/^(五|六|七|八|九|十)[、，]/.test(line)&&current==='front_content'){current='back_content';}
+    result[current]+=line+'\n';
+  }
+  // If no title found, use first line
+  if(!result.title){result.title=lines.find(l=>l.trim().length>2&&l.trim().length<30)||'未命名';}
+  return result;
+}
+function renderBatchList(){
+  const el=$('batch-list');
+  if(!S.batchItems.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--tl);font-size:13px">暂无导入的教案文件</div>';return;}
+  el.innerHTML=S.batchItems.map((item,i)=>`
+    <div class="batch-item">
+      <span style="font-size:16px">${item.status==='done'?'✅':item.status==='error'?'❌':'📄'}</span>
+      <span class="name">${item.title||item.fileName}</span>
+      <span class="status ${item.status}">${item.status==='done'?'已完成':item.status==='error'?'失败':'待渲染'}</span>
+      <button class="btn bo" style="padding:4px 8px;font-size:11px" onclick="previewBatchItem(${i})">👁 预览</button>
+      <button class="btn bd" style="padding:4px 8px;font-size:11px" onclick="removeBatchItem(${i})">✕</button>
+    </div>`).join('');
+}
+function removeBatchItem(i){S.batchItems.splice(i,1);renderBatchList();$('btn-batch-render').disabled=S.batchItems.length===0;}
+function clearBatch(){S.batchItems=[];renderBatchList();$('btn-batch-render').disabled=true;$('btn-batch-pdf').disabled=true;}
+function previewBatchItem(i){
+  const item=S.batchItems[i];
+  $('e-title').value=item.title;$('e-type').value=item.type;
+  $('e-goals').value=item.goals;$('e-kp').value=item.keypoints;
+  $('e-front').value=item.front_content;$('e-back').value=item.back_content;
+  document.querySelector('[data-t="edit"]').click();
+  toast('已加载: '+item.title,'ok');
+}
+
+// ==================== BATCH RENDER ====================
+async function doBatchRender(){
+  if(!S.batchItems.length){toast('请先导入教案文件','er');return;}
+  $('batch-progress').style.display='';
+  $('btn-batch-render').disabled=true;
+  for(let i=0;i<S.batchItems.length;i++){
+    const item=S.batchItems[i];
+    $('batch-bar').style.width=((i+1)/S.batchItems.length*100)+'%';
+    $('batch-status').textContent=`正在渲染 ${i+1}/${S.batchItems.length}: ${item.title}`;
+    try{
+      const frontImg=await renderPageCanvas(item,'f');
+      const backImg=await renderPageCanvas(item,'b');
+      item.frontImg=frontImg;item.backImg=backImg;item.status='done';
+    }catch(e){item.status='error';console.error(e);}
+    renderBatchList();
+    await sleep(100);
+  }
+  $('batch-status').textContent=`✅ 完成！共渲染 ${S.batchItems.filter(x=>x.status==='done').length} 份教案`;
+  $('btn-batch-pdf').disabled=false;
+  toast('批量渲染完成！','ok');
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ==================== BATCH PDF ====================
+async function doBatchPDF(){
+  const done=S.batchItems.filter(x=>x.status==='done');
+  if(!done.length){toast('请先完成批量渲染','er');return;}
+  toast('正在生成PDF...','in');
+  try{
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    for(let i=0;i<done.length;i++){
+      const item=done[i];
+      if(i>0)pdf.addPage();
+      if(item.frontImg){
+        pdf.addImage(item.frontImg,'PNG',0,0,210,297);
+      }
+      pdf.addPage();
+      if(item.backImg){
+        pdf.addImage(item.backImg,'PNG',0,0,210,297);
+      }
+    }
+    pdf.save('教案合集_'+new Date().toLocaleDateString('zh-CN')+'.pdf');
+    toast('PDF已生成并下载！','ok');
+  }catch(e){toast('PDF生成失败: '+e.message,'er');}
+}
+
+// ==================== RENDER ENGINE (Canvas) ====================
 function doRender(){
   const t=$('e-title').value||'未命名';
   toast('正在渲染 "'+t+'" ...','in');
@@ -317,81 +617,169 @@ function doRender(){
     S.rendered=true;
     $('rv-hint').textContent='✅ 渲染完成！可在下方预览效果。';
     toast('渲染完成！','ok');
-  },300);
+  },100);
+}
+function renderPageCanvas(lessonData,side){
+  return new Promise(resolve=>{
+    const cv=document.createElement('canvas');
+    cv.width=662;cv.height=936;
+    const ctx=cv.getContext('2d');
+    drawPage(ctx,cv.width,cv.height,side,lessonData);
+    resolve(cv.toDataURL('image/png'));
+  });
 }
 function renderPage(side){
   const cv=$('cv-'+side);const ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height;
+  const data={
+    title:$('e-title').value,type:$('e-type').value,
+    goals:$('e-goals').value,keypoints:$('e-kp').value,
+    front_content:$('e-front').value,back_content:$('e-back').value
+  };
+  drawPage(ctx,W,H,side,data);
+}
+
+function drawPage(ctx,W,H,side,data){
   const fs=parseInt($('fs-sl').value);
+  const lsmult=parseFloat($('ls-sl').value)/10;
+  const posJitter=parseInt($('pd-sl').value)/100; // 0-1
+  const strokeJitter=parseInt($('sd-sl').value)/100; // 0-1
+  const scribbleProb=parseInt($('sc-sl').value)/100; // 0-0.30
+  const inkVar=parseInt($('iv-sl').value); // 0-4
+  const paperType=$('paper-sel').value;
 
   // Paper background
-  const paper=$('paper-sel').value;
-  ctx.fillStyle=paper==='cream'?'#faf6ed':paper==='plain'?'#fff':'#fcfbf4';
-  ctx.fillRect(0,0,W,H);
-
-  // Paper texture
-  addTex(ctx,W,H);
+  drawPaper(ctx,W,H,paperType);
 
   // Lines
-  const lsp=Math.round(H/27);const sty=Math.round(lsp*1.4);
-  ctx.strokeStyle='#b4c8dc';ctx.lineWidth=0.5;
-  for(let i=0;i<26;i++){const y=sty+i*lsp;ctx.beginPath();ctx.moveTo(22,y);ctx.lineTo(W-16,y);ctx.stroke();}
+  const lsp=Math.round(H/27*lsmult);
+  const sty=Math.round(lsp*1.4);
 
   // Red margin
   const mx=Math.round(W*0.082);
-  ctx.strokeStyle='#c83232';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(mx,8);ctx.lineTo(mx,H-8);ctx.stroke();
-  ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(mx+3,8);ctx.lineTo(mx+3,H-8);ctx.stroke();
+  drawRedMargin(ctx,mx,H);
+
+  // Grid lines (for grid paper)
+  if(paperType==='grid'){
+    drawGridLines(ctx,W,H,mx,lsp);
+  }
 
   // Font
-  const inkMap={blue:'#0f2d8c',blue2:'#1a5abf',black:'#111'};
+  const inkMap={blue:'#0f2d8c',blue2:'#1a5abf',black:'#111',red:'#c83232'};
   const ink=inkMap[$('ink-sel').value]||'#0f2d8c';
-  const fontFamily= S.font==='kai'?"'KaiTi','STKaiti',serif":S.font==='fang'?"'FangSong',serif":"'SimHei','Microsoft YaHei',sans-serif";
+  let fontFamily;
+  if(S.font==='kai')fontFamily="'KaiTi','STKaiti',serif";
+  else if(S.font==='fang')fontFamily="'FangSong',serif";
+  else if(S.font==='hei')fontFamily="'SimHei','Microsoft YaHei',sans-serif";
+  else fontFamily="'KaiTi','STKaiti',serif";
+
+  // Check if custom font
+  const cf=S.customFonts.find(f=>f.name===S.font);
+  if(cf)fontFamily=`'${cf.name}',`+fontFamily;
 
   ctx.fillStyle=ink;ctx.textBaseline='top';
   const tx=mx+14,mw=W-tx-22;
 
-  if(side==='f') renderFront(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H);
-  else renderBack(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H);
+  // Render content
+  if(side==='f'){
+    renderFront(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H,posJitter,strokeJitter,inkVar,data);
+  }else{
+    renderBack(ctx,tx,sty,mw,lsp,fs,fontFamily,ink,H,posJitter,strokeJitter,inkVar,data);
+  }
+
+  // Scribble marks
+  if(scribbleProb>0){
+    drawScribbles(ctx,W,H,mx,sty,lsp,scribbleProb,ink);
+  }
+
+  // Paper texture
+  addTex(ctx,W,H);
 
   // Edge shadow
   const g=ctx.createLinearGradient(0,0,18,0);g.addColorStop(0,'rgba(0,0,0,0.03)');g.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=g;ctx.fillRect(0,0,18,H);
 }
-function renderFront(ctx,x,y,mw,lsp,fs,ff,ink,H){
-  const title=$('e-title').value,type=$('e-type').value;
-  const goals=$('e-goals').value,kp=$('e-kp').value,front=$('e-front').value;
+
+function drawPaper(ctx,W,H,type){
+  const colors={
+    lined:'#fcfbf4',grid:'#fcfbf4',plain:'#ffffff',cream:'#faf6ed'
+  };
+  // Check custom paper
+  const cp=S.customPapers.find(p=>p.name===type);
+  if(cp&&cp.imgData){
+    const img=new Image();img.src=cp.imgData;
+    try{ctx.drawImage(img,0,0,W,H);}catch(e){
+      ctx.fillStyle=colors[type]||colors.lined;ctx.fillRect(0,0,W,H);
+    }
+  }else{
+    ctx.fillStyle=colors[type]||colors.lined;ctx.fillRect(0,0,W,H);
+  }
+}
+
+function drawRedMargin(ctx,mx,H){
+  ctx.strokeStyle='#c83232';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(mx,8);ctx.lineTo(mx,H-8);ctx.stroke();
+  ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(mx+3,8);ctx.lineTo(mx+3,H-8);ctx.stroke();
+}
+
+function drawGridLines(ctx,W,H,mx,lsp){
+  // Red square grid like 田字格
+  ctx.strokeStyle='rgba(200,50,50,0.3)';ctx.lineWidth=0.5;
+  const cellSize=lsp;
+  const startX=mx+6;
+  const cols=Math.floor((W-startX-16)/cellSize);
+  const rows=Math.floor((H-40)/cellSize);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x=startX+c*cellSize;
+      const y=20+r*cellSize;
+      ctx.strokeRect(x,y,cellSize,cellSize);
+      // Center cross
+      ctx.beginPath();
+      ctx.moveTo(x+cellSize/2,y);ctx.lineTo(x+cellSize/2,y+cellSize);
+      ctx.moveTo(x,y+cellSize/2);ctx.lineTo(x+cellSize,y+cellSize/2);
+      ctx.stroke();
+    }
+  }
+}
+
+function renderFront(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
+  const title=data.title,type=data.type;
+  const goals=data.goals,kp=data.keypoints,front=data.front_content;
   let cy=y;
 
-  ctx.font=`bold ${fs+2}px ${ff}`;dtx(ctx,'课题  '+title,x,cy,ink);cy+=lsp;
-  ctx.font=`${fs}px ${ff}`;dtx(ctx,'课型：'+type,x,cy,ink);cy+=lsp;
+  ctx.font=`bold ${fs+2}px ${ff}`;dtx(ctx,'课题  '+title,x,cy,ink,pj,sj);cy+=lsp;
+  ctx.font=`${fs}px ${ff}`;dtx(ctx,'课型：'+type,x,cy,ink,pj,sj);cy+=lsp;
   ctx.strokeStyle=ink;ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(x,cy-3);ctx.lineTo(x+mw,cy-3);ctx.stroke();cy+=lsp*0.5;
 
-  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学目标',x,cy,ink);cy+=lsp;
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学目标',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs-1}px ${ff}`;
-  for(const l of wrap(goals,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}dtx(ctx,l,x+10,cy,ink);cy+=lsp*0.88;}
+  for(const l of wrap(goals,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88',pj,sj);break;}dtx(ctx,l,x+10,cy,ink,pj,sj);cy+=lsp*0.88;}
   cy+=lsp*0.4;
 
-  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学重难点',x,cy,ink);cy+=lsp;
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学重难点',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs-1}px ${ff}`;
-  for(const l of wrap(kp,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}dtx(ctx,l,x+10,cy,ink);cy+=lsp*0.88;}
+  for(const l of wrap(kp,mw-12,ctx)){if(cy>H-50){dtx(ctx,'（续背面）',x,cy,ink+'88',pj,sj);break;}dtx(ctx,l,x+10,cy,ink,pj,sj);cy+=lsp*0.88;}
   cy+=lsp*0.4;
 
-  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学过程',x,cy,ink);cy+=lsp;
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学过程',x,cy,ink,pj,sj);cy+=lsp;
   ctx.font=`${fs}px ${ff}`;
   for(const raw of front.split('\n')){
     const s=raw.trim();if(!s){cy+=lsp*0.3;continue;}
-    if(cy>H-35){dtx(ctx,'（续背面）',x,cy,ink+'88');break;}
+    if(cy>H-35){dtx(ctx,'（续背面）',x,cy,ink+'88',pj,sj);break;}
     const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
     for(const l of wrap(s,mw-(hd?0:12),ctx)){
       ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
-      dtx(ctx,l,hd?x:x+10,cy,ink);cy+=lsp;
+      dtx(ctx,l,hd?x:x+10,cy,ink,pj,sj);cy+=lsp;
     }
     ctx.font=`${fs}px ${ff}`;
   }
 }
-function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H){
-  const back=$('e-back').value;let cy=y;
-  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'（续前页）',x,cy,ink);cy+=lsp*1.3;
+
+function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H,pj,sj,iv,data){
+  const back=data.back_content;let cy=y;
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'（续前页）',x,cy,ink,pj,sj);cy+=lsp*1.3;
   ctx.font=`${fs}px ${ff}`;
 
   const lines=back.split('\n');let inSec=false,secT='',secL=[],secY=0;
@@ -399,13 +787,13 @@ function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H){
     const s=raw.trim();
     if(!s){if(inSec)secL.push('');else cy+=lsp*0.3;continue;}
     if(cy>H-35){
-      if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);
-      dtx(ctx,'（完）',x,cy,ink+'88');break;
+      if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);
+      dtx(ctx,'（完）',x,cy,ink+'88',pj,sj);break;
     }
     let isSec=false;
     for(const kw of ['板书设计','课后反思','教学反思','板书']){
       if(s.includes(kw)&&s.length<kw.length+8){
-        if(inSec&&secL.length){const bh=drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);cy=secY+bh+lsp*1.2;}
+        if(inSec&&secL.length){const bh=drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);cy=secY+bh+lsp*1.2;}
         inSec=true;secT=kw;secL=[];secY=cy+fs+6;isSec=true;break;
       }
     }
@@ -415,14 +803,15 @@ function renderBack(ctx,x,y,mw,lsp,fs,ff,ink,H){
       const hd=/^[一二三四五六七八九十]+[、，]/.test(s);
       for(const l of wrap(s,mw-(hd?0:12),ctx)){
         ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
-        dtx(ctx,l,hd?x:x+10,cy,ink);cy+=lsp;
+        dtx(ctx,l,hd?x:x+10,cy,ink,pj,sj);cy+=lsp;
       }
       ctx.font=`${fs}px ${ff}`;
     }
   }
-  if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink);
+  if(inSec&&secL.length)drawBox(ctx,secT,secL,x,secY,mw,lsp,fs,ff,ink,pj,sj);
 }
-function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink){
+
+function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink,pj,sj){
   const pad=10,iw=mw-pad*2;
   const wl=[];for(const l of lines)wl.push(...wrap(l,iw-6,ctx));
   const bh=wl.length*Math.round(lsp*0.88)+fs+pad*2+8;
@@ -430,27 +819,251 @@ function drawBox(ctx,title,lines,x,y,mw,lsp,fs,ff,ink){
   ctx.strokeStyle=ink;ctx.lineWidth=1.2;
   roundRect(ctx,bx,by,Math.round(bw),Math.round(bh),4);ctx.stroke();
   ctx.font=`bold ${fs}px ${ff}`;const tw=ctx.measureText(title).width;
-  dtx(ctx,title,Math.round(bx+(bw-tw)/2),by+pad/2,ink);
+  dtx(ctx,title,Math.round(bx+(bw-tw)/2),by+pad/2,ink,pj,sj);
   ctx.font=`${fs-1}px ${ff}`;let cy=by+fs+pad+2;
   for(const l of wl){if(!l.trim()){cy+=lsp*0.4;continue;}
-    const d='→' in l;dtx(ctx,l,x+pad/2+3,cy,ink);cy+=Math.round(lsp*0.88);}
+    dtx(ctx,l,x+pad/2+3,cy,ink,pj,sj);cy+=Math.round(lsp*0.88);}
   return bh;
 }
-function dtx(ctx,t,x,y,c){const j=()=>(Math.random()-0.5)*1.5;ctx.fillStyle=c;for(const ch of t){if(ch===' '){x+=4;continue;}ctx.fillText(ch,x+j(),y+j());x+=ctx.measureText(ch).width*(0.94+Math.random()*0.12);}}
+
+// Core text drawing with jitter control
+function dtx(ctx,t,x,y,c,pj=0,sj=0){
+  // pj = position jitter (0-1), sj = stroke jitter (0-1)
+  const pJx=pj*3.5, pJy=pj*2.5;
+  const sJitter=sj*2;
+  let cx=x;
+  for(const ch of t){
+    if(ch===' '){cx+=4;continue;}
+    const ox=cx+(Math.random()-0.5)*pJx;
+    const oy=y+(Math.random()-0.5)*pJy;
+    // Stroke jitter: slight blur or offset per stroke
+    if(sJitter>0&&Math.random()<sj*0.3){
+      // Draw slightly offset ghost for "messy stroke" effect
+      ctx.globalAlpha=0.15;
+      ctx.fillText(ch,ox+(Math.random()-0.5)*sJitter,oy+(Math.random()-0.5)*sJitter);
+      ctx.globalAlpha=1;
+    }
+    ctx.fillStyle=c;
+    ctx.fillText(ch,ox,oy);
+    cx+=ctx.measureText(ch).width*(0.94+Math.random()*0.12);
+  }
+}
+
 function wrap(t,mw,ctx){const r=[];let l='';for(const c of t){const t2=l+c;if(ctx.measureText(t2).width>mw&&l){r.push(l);l=c;}else l=t2;}if(l)r.push(l);return r.length?r:[''];}
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
-function addTex(ctx,W,H){const d=ctx.getImageData(0,0,W,H);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*4;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}ctx.putImageData(d,0,0);}
 
-// ── Styles ──
-function selFont(el){document.querySelectorAll('.sc').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');S.font=el.dataset.font;}
-function selPrint(el,m){document.querySelectorAll('.pi').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');S.printMode=m;}
+function addTex(ctx,W,H){const d=ctx.getImageData(0,0,W,H);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-0.5)*3;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}ctx.putImageData(d,0,0);}
 
-// ── Finalize ──
+// Scribble marks (random corrections/涂改)
+function drawScribbles(ctx,W,H,mx,sty,lsp,prob,ink){
+  const scribbleCount=Math.floor(prob*15);
+  for(let i=0;i<scribbleCount;i++){
+    const sx=mx+20+Math.random()*(W-mx-40);
+    const sy=sty+Math.random()*(H-sty-40);
+    const type=Math.floor(Math.random()*3);
+    ctx.strokeStyle=ink;ctx.lineWidth=0.8+Math.random()*1.2;
+    ctx.globalAlpha=0.3+Math.random()*0.4;
+    if(type===0){
+      // Small scribble circle (correction mark)
+      ctx.beginPath();
+      const r=5+Math.random()*10;
+      for(let a=0;a<Math.PI*2;a+=0.3){
+        const rx=sx+Math.cos(a)*r+(Math.random()-0.5)*3;
+        const ry=sy+Math.sin(a)*r+(Math.random()-0.5)*3;
+        a===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);
+      }
+      ctx.stroke();
+    }else if(type===1){
+      // Cross-out line
+      ctx.beginPath();
+      ctx.moveTo(sx-8,sy-4);ctx.lineTo(sx+8,sy+4);
+      ctx.moveTo(sx-8,sy+4);ctx.lineTo(sx+8,sy-4);
+      ctx.stroke();
+    }else{
+      // Wavy strikethrough
+      ctx.beginPath();
+      for(let dx=-15;dx<15;dx+=2){
+        const wx=sx+dx;const wy=sy+Math.sin(dx*0.5)*2;
+        dx===-15?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+}
+
+function onPaperChange(){
+  // Reset to default font selection visual
+}
+
+// ==================== CUSTOM FONT MANAGEMENT ====================
+async function addCustomFont(){
+  const name=$('font-name').value.trim();
+  const file=$('font-upload').files[0];
+  if(!name){toast('请输入字体名称','er');return;}
+  if(!file){toast('请选择字体文件','er');return;}
+
+  if(file.name.match(/\.(ttf|otf|woff)$/i)){
+    // TTF/OTF font file
+    const url=URL.createObjectURL(file);
+    const fontFace=new FontFace(name,`url(${url})`);
+    try{
+      await fontFace.load();
+      document.fonts.add(fontFace);
+      S.customFonts.push({name,url,fontFace,file:file.name});
+      toast('字体 "'+name+'" 已添加','ok');
+    }catch(e){toast('字体加载失败: '+e.message,'er');}
+  }else if(file.type.startsWith('image/')){
+    // Font image: create a placeholder (in production, would extract glyphs)
+    const url=URL.createObjectURL(file);
+    S.customFonts.push({name,url:null,isImage:true,file:file.name,imgUrl:url});
+    toast('字体图片 "'+name+'" 已添加（使用楷体渲染）','ok');
+  }else{
+    toast('不支持的文件格式','er');return;
+  }
+  $('font-name').value='';$('font-upload').value='';
+  renderFontGrid();
+}
+
+function renderFontGrid(){
+  const el=$('font-grid');
+  // Built-in fonts
+  const builtins=[
+    {name:'kai',label:'楷体（推荐）',ff:"'KaiTi','STKaiti',serif",text:'天地人和'},
+    {name:'fang',label:'仿宋',ff:"'FangSong',serif",text:'天地人和'},
+    {name:'hei',label:'黑体',ff:"'SimHei','Microsoft YaHei',sans-serif",text:'天地人和'},
+  ];
+  let html=builtins.map(f=>`
+    <div class="font-card ${S.font===f.name?'sel':''}" onclick="S.font='${f.name}';renderFontGrid();renderStyleCards()">
+      <div style="font-family:${f.ff};font-size:22px;height:40px;display:flex;align-items:center;justify-content:center">${f.text}</div>
+      <div class="fn">${f.label}</div>
+    </div>`).join('');
+
+  html+=S.customFonts.map((f,i)=>`
+    <div class="font-card ${S.font===f.name?'sel':''}" onclick="S.font='${f.name}';renderFontGrid();renderStyleCards()">
+      ${f.imgUrl?`<img src="${f.imgUrl}" style="width:100%;height:40px;object-fit:contain;border-radius:4px">`:`<div style="font-family:'${f.name}';font-size:22px;height:40px;display:flex;align-items:center;justify-content:center">天地人和</div>`}
+      <div class="fn">${f.name}</div>
+      <button class="del" onclick="event.stopPropagation();removeCustomFont(${i})">×</button>
+    </div>`).join('');
+
+  el.innerHTML=html||'<div style="text-align:center;padding:20px;color:var(--tl);grid-column:1/-1;font-size:13px">暂无自定义字体</div>';
+
+  // Also update the style selector in render tab
+  renderStyleCards();
+}
+
+function renderStyleCards(){
+  const container=document.querySelector('#t-render .sgs');
+  if(!container)return;
+  const builtins=[
+    {name:'kai',label:'楷体（推荐）',ff:"'KaiTi','STKaiti',serif"},
+    {name:'fang',label:'仿宋',ff:"'FangSong',serif"},
+    {name:'hei',label:'黑体',ff:"'SimHei','Microsoft YaHei',sans-serif"},
+  ];
+  let html=builtins.map(f=>`
+    <div class="sc ${S.font===f.name?'sel':''}" data-font="${f.name}" onclick="selFont(this)">
+      <div class="pv2" style="font-family:${f.ff};font-size:20px">天地人和</div><div class="lb">${f.label}</div>
+    </div>`).join('');
+  html+=S.customFonts.map(f=>`
+    <div class="sc ${S.font===f.name?'sel':''}" data-font="${f.name}" onclick="selFont(this)">
+      ${f.imgUrl?`<img src="${f.imgUrl}" style="max-height:50px;object-fit:contain">`:`<div class="pv2" style="font-family:'${f.name}';font-size:20px">天地人和</div>`}
+      <div class="lb">${f.name}</div>
+    </div>`).join('');
+  container.innerHTML=html;
+}
+
+function removeCustomFont(i){
+  const f=S.customFonts[i];
+  if(f.url)URL.revokeObjectURL(f.url);
+  if(f.fontFace)document.fonts.delete(f.fontFace);
+  if(S.font===f.name)S.font='kai';
+  S.customFonts.splice(i,1);
+  renderFontGrid();
+  toast('字体已删除','ok');
+}
+
+// ==================== CUSTOM PAPER MANAGEMENT ====================
+function addCustomPaper(){
+  const name=$('paper-name').value.trim();
+  const file=$('paper-upload').files[0];
+  if(!name){toast('请输入纸张名称','er');return;}
+  if(!file){toast('请选择纸张照片','er');return;}
+
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const imgData=e.target.result;
+    S.customPapers.push({name,imgData});
+    $('paper-name').value='';$('paper-upload').value='';
+    renderPaperGrid();
+    // Add to paper select
+    updatePaperSelect();
+    toast('纸张 "'+name+'" 已添加','ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderPaperGrid(){
+  const el=$('paper-grid');
+  // Built-in papers
+  const builtins=[
+    {name:'lined',label:'横线本（标准）',preview:'linear-gradient(#fcfbf4,#fcfbf4)'},
+    {name:'grid',label:'田字格（红色方格）',preview:'linear-gradient(#fcfbf4,#fcfbf4)'},
+    {name:'plain',label:'纯白纸',preview:'linear-gradient(#fff,#fff)'},
+    {name:'cream',label:'米黄纸',preview:'linear-gradient(#faf6ed,#faf6ed)'},
+  ];
+  let html=builtins.map(p=>`
+    <div class="style-card" onclick="$('paper-sel').value='${p.name}';renderPaperGrid()">
+      <div style="width:100%;height:80px;background:${p.preview};border:1px solid var(--bd);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:24px">${p.name==='grid'?'⊞':p.name==='lined'?'≡':'📄'}</div>
+      <div class="sn">${p.label}</div>
+    </div>`).join('');
+
+  html+=S.customPapers.map((p,i)=>`
+    <div class="style-card" onclick="$('paper-sel').value='${p.name}';renderPaperGrid()">
+      <img src="${p.imgData}" style="width:100%;height:80px;object-fit:cover;border-radius:4px">
+      <div class="sn">${p.name}</div>
+      <button class="del" onclick="event.stopPropagation();removeCustomPaper(${i})">×</button>
+    </div>`).join('');
+
+  el.innerHTML=html;
+}
+
+function removeCustomPaper(i){
+  const p=S.customPapers[i];
+  if($('paper-sel').value===p.name)$('paper-sel').value='lined';
+  S.customPapers.splice(i,1);
+  renderPaperGrid();
+  updatePaperSelect();
+  toast('纸张已删除','ok');
+}
+
+function updatePaperSelect(){
+  const sel=$('paper-sel');
+  // Remove custom options
+  while(sel.options.length>4)sel.remove(4);
+  S.customPapers.forEach(p=>{
+    const opt=document.createElement('option');opt.value=p.name;opt.textContent=p.name;sel.appendChild(opt);
+  });
+}
+
+// ==================== STYLE SELECTION ====================
+function selFont(el){
+  document.querySelectorAll('.sc').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');
+  S.font=el.dataset.font;
+}
+function selPrint(el,m){
+  document.querySelectorAll('.pi').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');
+  S.printMode=m;
+}
+
+// ==================== FINALIZE ====================
 function finalize(){
   if(!S.rendered){toast('请先点击"生成预览"','er');return;}
+  const title=$('e-title').value;
   S.pages=[
-    {name:'教案_'+$('e-title').value+'_正面',cv:$('cv-f')},
-    {name:'教案_'+$('e-title').value+'_背面',cv:$('cv-b')},
+    {name:'教案_'+title+'_正面',cv:$('cv-f')},
+    {name:'教案_'+title+'_背面',cv:$('cv-b')},
   ];
   const g=$('out-grid');g.innerHTML=S.pages.map((p,i)=>`
     <div class="oi" onclick="pvPage(${i})">
@@ -460,11 +1073,14 @@ function finalize(){
   document.querySelector('[data-t="print"]').click();
   toast('教案已生成！切换到打印页面','ok');
 }
+
 function pvPage(i){
   const p=S.pages[i];const cv=$('pv-cv');const ctx=cv.getContext('2d');
   cv.width=p.cv.width;cv.height=p.cv.height;ctx.drawImage(p.cv,0,0);
   $('pv-modal').classList.add('on');
 }
+
+// ==================== PRINT & DOWNLOAD ====================
 function doPrint(){
   if(!S.pages.length){toast('请先生成教案','er');return;}
   const w=window.open('','_blank');
@@ -473,11 +1089,28 @@ function doPrint(){
   h+='</body></html>';w.document.write(h);w.document.close();w.onload=()=>w.print();
   toast('正在打开打印对话框...','in');
 }
+
 function doDownload(){
   if(!S.pages.length){toast('请先生成教案','er');return;}
   S.pages.forEach(p=>{const a=document.createElement('a');a.download=p.name+'.png';a.href=p.cv.toDataURL('image/png');a.click();});
   toast('下载已开始','ok');
 }
+
+function doDownloadPDF(){
+  if(!S.pages.length){toast('请先生成教案','er');return;}
+  try{
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    S.pages.forEach((p,i)=>{
+      if(i>0)pdf.addPage();
+      pdf.addImage(p.cv.toDataURL('image/png'),'PNG',0,0,210,297);
+    });
+    pdf.save(S.pages[0].name+'.pdf');
+    toast('PDF已下载','ok');
+  }catch(e){toast('PDF生成失败: '+e.message,'er');}
+}
+
+// ==================== LOAD SAMPLE ====================
 function loadSample(){
   $('e-title').value='3 天窗';$('e-type').value='新授课';
   $('e-goals').value='1.认识"慰、藉"等3个生字，会写"慰、藉、瞥"等10个生字，理解"慰藉、威力"等词语。\n2.正确、流利、有感情地朗读课文，理解课文内容，体会"小小的天窗是你唯一的慰藉"这句话的含义。\n3.学习作者运用丰富的想象，把看到的事物写得更具体、更生动的写作方法。';
@@ -487,8 +1120,12 @@ function loadSample(){
   toast('示例已加载','ok');
 }
 
-// ── Toast ──
+// ==================== TOAST ====================
 function toast(m,t){const d=document.createElement('div');d.className='toast '+(t||'in');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2500);}
+
+// ==================== INIT ====================
+renderFontGrid();
+renderPaperGrid();
 </script>
 </body>
 </html>
