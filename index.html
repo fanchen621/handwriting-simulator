@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教案手写仿真系统 v4.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--p:#2563eb;--pl:#3b82f6;--d:#dc2626;--s:#16a34a;--bg:#f8f9fa;--c:#fff;--bd:#e2e8f0;--t:#1e293b;--tl:#64748b;--purple:#7c3aed}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--t);line-height:1.6}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.hdr{text-align:center;padding:20px 0 12px}
+.hdr h1{font-size:24px;color:var(--t)}
+.hdr p{color:var(--tl);font-size:12px;margin-top:4px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--c);border-radius:10px;padding:4px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.tab{flex:1;padding:8px 12px;text-align:center;cursor:pointer;font-size:13px;color:var(--tl);border-radius:8px;transition:.2s;user-select:none}
+.tab:hover{color:var(--t);background:#f8fafc}
+.tab.on{color:var(--p);background:#eff6ff;font-weight:600}
+.tc{display:none}.tc.on{display:block}
+
+/* Cards */
+.card{background:var(--c);border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.ct{font-size:14px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ct .n{background:var(--p);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+
+/* Upload zones */
+.uz{border:2px dashed var(--bd);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:.2s;position:relative;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.uz:hover{border-color:var(--p);background:#f0f7ff}
+.uz .ic{font-size:32px;margin-bottom:6px}
+.uz .tx{font-size:13px;color:var(--tl)}.uz .ht{font-size:11px;color:var(--tl);margin-top:3px}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.du{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.sl{text-align:center;font-size:12px;font-weight:600;margin-bottom:4px}
+.sl .b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;color:#fff}
+.sl .b.f{background:var(--p)}.sl .b.bk{background:var(--purple)}
+.pv{position:relative;margin-top:6px;display:none}
+.pv img{max-width:100%;border-radius:6px;border:1px solid var(--bd)}
+.pv .rm{position:absolute;top:4px;right:4px;background:var(--d);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.2s;display:inline-flex;align-items:center;gap:4px}
+.bp{background:var(--p);color:#fff}.bp:hover{background:var(--pl)}
+.bs{background:var(--s);color:#fff}
+.bo{background:#fff;color:var(--t);border:1px solid var(--bd)}.bo:hover{background:var(--bg)}
+.bd{background:var(--d);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.bl{padding:10px 20px;font-size:13px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+/* Form */
+.fg{margin-bottom:10px}
+.fl{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
+.fi{width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-size:12px}
+.fi:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+textarea.fi{min-height:80px;resize:vertical;font-family:'KaiTi','STKaiti',serif;font-size:14px;line-height:1.6}
+
+/* Font selector */
+.sgs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sc{border:2px solid var(--bd);border-radius:6px;padding:8px;text-align:center;cursor:pointer;transition:.2s}
+.sc:hover{border-color:var(--p)}.sc.sel{border-color:var(--p);background:#f0f7ff}
+.sc .pv2{height:40px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.sc .lb{font-size:11px;font-weight:600}
+
+/* Canvas */
+.pca{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.pca canvas{border:1px solid var(--bd);border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.hint{color:var(--tl);font-size:12px;margin-bottom:10px;line-height:1.5}
+
+/* Batch */
+.batch-list{max-height:260px;overflow-y:auto;margin:10px 0}
+.batch-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--bd);border-radius:6px;margin-bottom:4px}
+.batch-item .name{flex:1;font-size:12px;font-weight:600}
+.batch-item .status{font-size:11px}
+.batch-item .status.done{color:var(--s)}.batch-item .status.pending{color:var(--tl)}.batch-item .status.error{color:var(--d)}
+.pb{height:3px;background:var(--bd);border-radius:2px;overflow:hidden;margin:6px 0}
+.pb .fl2{height:100%;background:var(--p);transition:width .3s;border-radius:2px}
+.pts{font-size:11px;color:var(--tl)}
+
+/* Import zone */
+.import-zone{border:2px dashed var(--purple);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:.2s;position:relative;margin-bottom:10px}
+.import-zone:hover{border-color:var(--p);background:#f0f7ff}
+.import-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.import-zone .ic{font-size:28px;margin-bottom:4px}
+.import-zone .tx{font-size:13px;color:var(--tl)}
+
+/* Slider */
+.sg{display:flex;align-items:center;gap:6px}
+.sg input[type=range]{flex:1;accent-color:var(--p)}
+.sg .sv{min-width:36px;text-align:right;font-size:12px;font-weight:600;color:var(--p)}
+
+/* Toast */
+.toast{position:fixed;top:14px;right:14px;padding:8px 16px;border-radius:6px;color:#fff;font-size:12px;z-index:2000;animation:si .3s;box-shadow:0 4px 10px rgba(0,0,0,.12)}
+.toast.ok{background:var(--s)}.toast.er{background:var(--d)}.toast.in{background:var(--p)}
+@keyframes si{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Print options */
+.po{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.pi{border:2px solid var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.2s}
+.pi:hover{border-color:var(--p)}.pi.sel{border-color:var(--p);background:#f0f7ff}
+.pi .ic2{font-size:24px;margin-bottom:2px}
+.pi .tt{font-size:13px;font-weight:600}.pi .ds{font-size:11px;color:var(--tl)}
+
+/* Output grid */
+.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px}
+.oi{border:1px solid var(--bd);border-radius:6px;overflow:hidden;cursor:pointer;transition:.2s}
+.oi:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.oi img{width:100%;display:block}
+.oi .nf{padding:6px 8px}.oi .nm{font-size:12px;font-weight:600}.oi .pg{font-size:10px;color:var(--tl)}
+
+/* Preview modal */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;justify-content:center;align-items:center}
+.mo.on{display:flex}
+.md{background:#fff;border-radius:12px;padding:16px;max-width:92vw;max-height:90vh;overflow:auto}
+.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;color:#fff}
+.badge.f{background:var(--p)}.badge.bk{background:var(--purple)}.badge.g{background:var(--s)}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+@media(max-width:768px){.du,.fr,.fr3,.sgs{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap;font-size:11px;padding:6px 8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>📝 教案手写仿真系统</h1>
+    <p>导入DOCX → 编辑内容 → 一键生成手写教案 → 导出PDF打印</p>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-t="edit">✍️ 教案编写</div>
+    <div class="tab" data-t="render">🎨 渲染预览</div>
+    <div class="tab" data-t="batch">📦 批量处理</div>
+    <div class="tab" data-t="export">🖨️ 导出打印</div>
+  </div>
+
+  <!-- ===== Tab 1: Edit ===== -->
+  <div class="tc on" id="t-edit">
+    <div class="card">
+      <div class="ct"><span class="n">1</span> 导入DOCX（可选）</div>
+      <p class="hint">支持导入 .docx 文件自动解析。也可以直接在下方手动填写教案内容。</p>
+      <div class="import-zone" id="quick-import-zone" style="border-color:var(--bd)">
+        <div class="ic">📄</div>
+        <div class="tx">点击或拖拽上传 DOCX 文件，自动填充下方表单</div>
+        <input type="file" accept=".docx,.doc" id="quick-import-files">
+      </div>
+      <div id="import-msg" style="font-size:12px;color:var(--tl);margin-top:6px"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">2</span> 教案内容</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">课题名称</label><input class="fi" id="e-title" value="3 天窗" placeholder="例：3 天窗"></div>
+        <div class="fg"><label class="fl">课型</label><input class="fi" id="e-type" value="新授课" placeholder="例：新授课"></div>
+      </div>
+      <div class="fg"><label class="fl">教学目标</label><textarea class="fi" id="e-goals">1.认识"慰、藉"等3个生字，会写"慰、藉、瞥"等10个生字，理解"慰藉、威力"等词语。
+2.正确、流利、有感情地朗读课文，理解课文内容，体会"小小的天窗是你唯一的慰藉"这句话的含义。
+3.学习作者运用丰富的想象，把看到的事物写得更具体、更生动的写作方法。</textarea></div>
+      <div class="fg"><label class="fl">教学重难点</label><textarea class="fi" id="e-kp">重点：理解课文内容，了解天窗给乡下孩子带来的无尽遐想和快乐。
+难点：理解"小小的天窗是你唯一的慰藉"的含义，体会作者对天窗的特殊感情。</textarea></div>
+      <div class="fg"><label class="fl">教学过程（正面）</label><textarea class="fi" id="e-front" rows="10">一、激趣导入，揭示课题
+1.同学们，你们见过天窗吗？谁知道什么是天窗？
+2.出示天窗图片，简介天窗：天窗是在屋顶开的一个小窗子，用来采光和通风。
+3.板书课题，齐读课题。
+4.质疑：读了课题，你想知道什么？
+二、初读课文，整体感知
+1.自由朗读课文，读准字音，读通句子。
+2.检查生字词认读情况。
+3.默读课文，思考：什么是天窗？天窗在什么时候成为孩子们"唯一的慰藉"？
+三、精读课文，品味语言
+1.学习第1-3自然段
+（1）指名读第1-3自然段。
+（2）说说天窗是什么样子的？为什么要开天窗？
+（3）交流：天窗的位置、样子和作用。
+2.学习第4-7自然段
+（1）默读第4-7自然段，画出表现孩子们心情变化的词句。
+（2）交流：下雨天，孩子们被关在屋里时的心情怎样？透过天窗看到了什么？想到了什么？
+（3）品读重点句子，体会想象的丰富。
+（4）指导朗读，读出孩子们的快乐。
+四、课堂小结
+天窗虽然很小，却给孩子们带来了无穷的快乐和想象。</textarea></div>
+      <div class="fg"><label class="fl">背面内容（续课 + 板书设计 + 课后反思）</label><textarea class="fi" id="e-back" rows="10">五、学习第8自然段
+1.齐读最后一个自然段。
+2.理解"发明这天窗的大人们，是应得感谢的"这句话的含义。
+3.小结：天窗不仅给了孩子们一个看世界的窗口，更给了他们想象的翅膀。
+六、总结全文，拓展延伸
+1.用自己的话说说课文的主要内容。
+2.体会作者对天窗的感情，感受天窗给孩子们带来的快乐。
+3.拓展：你有没有类似的经历？在无聊或孤独的时候，是什么给了你快乐和想象？
+板书设计
+天窗
+屋子→天窗→想象
+木板窗→天窗→慰藉
+看到的→想到的
+一颗星→无数星
+一朵云→无数云
+一条黑影→蝙蝠、夜莺……
+课后反思
+本课教学中，我注重引导学生抓住关键词句理解课文内容，通过品读、想象、朗读等多种方式感受天窗给孩子们带来的快乐。在教学"想象"这部分内容时，我引导学生展开想象的翅膀，用自己的语言描述透过天窗看到的和想到的内容，激发了学生的学习兴趣。教学效果较好，学生参与度高。不足之处是部分学生对"唯一的慰藉"理解还不够深入，需要在第二课时进一步引导体会。</textarea></div>
+      <div class="acts">
+        <button class="btn bp bl" onclick="doRender()">🎨 生成手写预览</button>
+        <button class="btn bo bl" onclick="loadSample()">📋 加载示例</button>
+        <button class="btn bo bl" onclick="clearForm()">🗑️ 清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 2: Render ===== -->
+  <div class="tc" id="t-render">
+    <div class="card">
+      <div class="ct"><span class="n">🎨</span> 手写仿真参数</div>
+      <div class="fr3" style="margin-bottom:8px">
+        <div class="fg"><label class="fl">字体选择</label>
+          <select class="fi" id="font-sel" onchange="S.font=this.value">
+            <option value="kai">楷体（推荐）</option>
+            <option value="fang">仿宋</option>
+            <option value="hei">黑体</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">字号: <span id="fs-val">22</span>px</label>
+          <div class="sg"><input type="range" min="14" max="32" value="22" id="fs-sl" oninput="document.getElementById('fs-val').textContent=this.value"><span class="sv">22</span></div>
+        </div>
+        <div class="fg"><label class="fl">墨水颜色</label>
+          <select class="fi" id="ink-sel"><option value="blue">深蓝（钢笔）</option><option value="blue2">蓝色（水笔）</option><option value="black">黑色</option><option value="red">红色</option></select>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--bd);padding-top:10px;margin-top:4px">
+        <p style="font-size:12px;font-weight:600;margin-bottom:8px">🎯 仿手写效果调节</p>
+        <div class="fr3">
+          <div class="fg"><label class="fl">文字凌乱度: <span id="pd-val">35</span>%</label>
+            <div class="sg"><input type="range" min="0" max="100" value="35" id="pd-sl" oninput="document.getElementById('pd-val').textContent=this.value"><span class="sv">35%</span></div>
+          </div>
+          <div class="fg"><label class="fl">笔画凌乱度: <span id="sd-val">25</span>%</label>
+            <div class="sg"><input type="range" min="0" max="100" value="25" id="sd-sl" oninput="document.getElementById('sd-val').textContent=this.value"><span class="sv">25%</span></div>
+          </div>
+          <div class="fg"><label class="fl">涂改痕迹: <span id="sc-val">5</span>%</label>
+            <div class="sg"><input type="range" min="0" max="30" value="5" id="sc-sl" oninput="document.getElementById('sc-val').textContent=this.value"><span class="sv">5%</span></div>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label class="fl">墨水深浅: <span id="iv-val">适中</span></label>
+            <div class="sg"><input type="range" min="0" max="4" value="2" id="iv-sl" oninput="document.getElementById('iv-val').textContent=['无','轻微','适中','较大','强烈'][this.value]"><span class="sv">适中</span></div>
+          </div>
+          <div class="fg"><label class="fl">行距倍数: <span id="ls-val">1.0</span></label>
+            <div class="sg"><input type="range" min="6" max="20" value="10" id="ls-sl" oninput="document.getElementById('ls-val').textContent=(this.value/10).toFixed(1)"><span class="sv">1.0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">👁</span> 渲染预览</div>
+      <p class="hint" id="rv-hint">点击"生成手写预览"按钮开始渲染。</p>
+      <div class="pca" id="pca">
+        <div><div class="sl"><span class="badge f">正面</span></div><canvas id="cv-f" width="662" height="936" style="width:331px;height:468px;background:#fff;border-radius:3px"></canvas></div>
+        <div><div class="sl"><span class="badge bk">背面</span></div><canvas id="cv-b" width="662" height="936" style="width:331px;height:468px;background:#fff;border-radius:3px"></canvas></div>
+      </div>
+      <div class="acts">
+        <button class="btn bp bl" onclick="doRender()">🔄 重新渲染</button>
+        <button class="btn bs bl" onclick="goToExport()">✅ 确认并导出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 3: Batch ===== -->
+  <div class="tc" id="t-batch">
+    <div class="card">
+      <div class="ct"><span class="n">📂</span> 批量导入DOCX教案</div>
+      <p class="hint">支持一次导入多个 .docx 文件，自动解析教案结构后批量渲染生成。</p>
+      <div class="import-zone" id="import-zone">
+        <div class="ic">📄</div>
+        <div class="tx">点击或拖拽上传 DOCX 文件（支持多选）</div>
+        <input type="file" accept=".docx,.doc" multiple id="import-files">
+      </div>
+      <div id="batch-list" class="batch-list"></div>
+      <div class="acts">
+        <button class="btn bp bl" id="btn-batch-render" onclick="doBatchRender()" disabled>🎨 批量渲染</button>
+        <button class="btn bs bl" id="btn-batch-pdf" onclick="doBatchPDF()" disabled>📑 导出PDF</button>
+        <button class="btn bo bl" onclick="clearBatch()">🗑️ 清空</button>
+      </div>
+      <div id="batch-progress" style="display:none;margin-top:10px">
+        <div class="pb"><div class="fl2" id="batch-bar" style="width:0%"></div></div>
+        <div class="pts" id="batch-status">准备中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab 4: Export ===== -->
+  <div class="tc" id="t-export">
+    <div class="card">
+      <div class="ct"><span class="n">🖨</span> 导出设置</div>
+      <div class="po">
+        <div class="pi sel" onclick="selPrint(this,'duplex')"><div class="ic2">📑</div><div class="tt">双面打印</div><div class="ds">正面+背面自动配对</div></div>
+        <div class="pi" onclick="selPrint(this,'single')"><div class="ic2">📄</div><div class="tt">单面打印</div><div class="ds">仅打印正面</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="n">📦</span> 已生成的教案</div>
+      <div class="og" id="out-grid"><div style="text-align:center;padding:24px;color:var(--tl);grid-column:1/-1;font-size:12px">暂无已生成的教案。请先在"教案编写"中编辑内容，然后点击"生成手写预览"。</div></div>
+      <div class="acts">
+        <button class="btn bs bl" onclick="doDownloadPNG()">💾 下载PNG</button>
+        <button class="btn bp bl" onclick="doDownloadPDF()">📑 下载PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="mo" id="pv-modal">
+  <div class="md" style="max-width:800px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="font-size:15px">📄 教案预览</h3>
+      <button class="btn bo" onclick="document.getElementById('pv-modal').classList.remove('on')">✕</button>
+    </div>
+    <canvas id="pv-cv" width="662" height="936" style="width:100%;border:1px solid var(--bd);border-radius:3px"></canvas>
+  </div>
+</div>
+
+<script>
+// ==================== HELPERS ====================
+const $=id=>document.getElementById(id);
+function toast(msg,type){const d=document.createElement('div');d.className='toast '+(type||'in');d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
+
+// ==================== STATE ====================
+const S={
+  font:'kai', printMode:'duplex',
+  pages:[], rendered:false,
+  batchItems:[],
+  frontImgData:null, backImgData:null
+};
+
+// ==================== TABS ====================
+$('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');$('t-'+t.dataset.t).classList.add('on');
+});
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  document.querySelector('[data-t="'+name+'"]').classList.add('on');
+  $('t-'+name).classList.add('on');
+}
+
+// ==================== QUICK DOCX IMPORT ====================
+$('quick-import-files').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(!f.name.endsWith('.docx')&&!f.name.endsWith('.doc')){
+    toast('仅支持 .docx 文件','er');e.target.value='';return;
+  }
+  toast('正在解析 '+f.name+'...','in');
+  try{
+    const ab=await f.arrayBuffer();
+    const result=await mammoth.extractRawText({arrayBuffer:ab});
+    const parsed=parseLessonText(result.value);
+    $('e-title').value=parsed.title||'';
+    $('e-type').value=parsed.type||'新授课';
+    $('e-goals').value=parsed.goals||'';
+    $('e-kp').value=parsed.keypoints||'';
+    $('e-front').value=parsed.front_content||'';
+    $('e-back').value=parsed.back_content||'';
+    $('import-msg').innerHTML='✅ <b>'+f.name+'</b> 解析成功！已自动填充表单。';
+    $('import-msg').style.color='var(--s)';
+    toast('解析成功！','ok');
+  }catch(err){
+    console.error('DOCX parse error:',err);
+    $('import-msg').innerHTML='❌ 解析失败: '+err.message+'。请手动填写内容。';
+    $('import-msg').style.color='var(--d)';
+    toast('解析失败，请手动填写','er');
+  }
+  e.target.value='';
+});
+
+// Drag & drop for quick import
+const qiz=$('quick-import-zone');
+qiz.addEventListener('dragover',e=>{e.preventDefault();qiz.style.borderColor='var(--p)';});
+qiz.addEventListener('dragleave',()=>qiz.style.borderColor='');
+qiz.addEventListener('drop',e=>{
+  e.preventDefault();qiz.style.borderColor='';
+  if(e.dataTransfer.files.length){$('quick-import-files').files=e.dataTransfer.files;$('quick-import-files').dispatchEvent(new Event('change'));}
+});
+
+// ==================== ROBUST DOCX PARSER ====================
+function parseLessonText(text){
+  const result={title:'',type:'新授课',goals:'',keypoints:'',front_content:'',back_content:''};
+  const lines=text.split('\n');
+  let current='front_content';
+  let titleFound=false;
+
+  for(let i=0;i<lines.length;i++){
+    let line=lines[i].trim();
+    if(!line)continue;
+
+    // Title detection - multiple patterns
+    if(!titleFound){
+      let m=line.match(/(?:课题|题目|篇名|课文)[：:\s]*(.+)/);
+      if(m){
+        let t=m[1].trim().split(/\s+/)[0].replace(/[板块一二三四五六七八九十\d.].*$/,'').trim();
+        if(t.length>=2&&t.length<=20){result.title=t;titleFound=true;continue;}
+      }
+      // Also try: "3 天窗" or "第X课 XXX" patterns at beginning
+      if(i<5){
+        m=line.match(/^(?:\d+[\s.、]|第[一二三四五六七八九十\d]+[课章单元])\s*(.{2,15})/);
+        if(m){result.title=m[1].trim();titleFound=true;continue;}
+      }
+    }
+
+    // Section detection - very flexible
+    if(/^(教学目标|教学目的|教学要求|学习目标)\s*$/u.test(line)){current='goals';continue;}
+    if(/^(教学重点|教学难点|教学重难点|重难点|重点难点|教学重点和难点)\s*$/u.test(line)){current='keypoints';continue;}
+    if(/^(教学过程|教学步骤|教学流程|教学环节|教学程序)\s*$/u.test(line)){current='front_content';continue;}
+    
+    // Back content triggers
+    if(/^(板书设计|板书)\s*$/u.test(line)){current='back_content';result.back_content+=line+'\n';continue;}
+    if(/^(课后反思|教学反思|教后反思|课后小结|教学后记)\s*$/u.test(line)){current='back_content';result.back_content+=line+'\n';continue;}
+    
+    // Chinese numeral section markers that indicate back page content
+    if(/^[五六七八九十][、，,.]/.test(line)&&current==='front_content'){
+      current='back_content';
+    }
+
+    result[current]+=line+'\n';
+  }
+
+  // Fallback title
+  if(!result.title){
+    for(const l of lines){
+      const t=l.trim();
+      if(t.length>=2&&t.length<=15&&!/^[一二三四五六七八九十\d]/.test(t)&&!/^[教板课重]/.test(t)){result.title=t;break;}
+    }
+    if(!result.title)result.title='未命名教案';
+  }
+
+  // Clean up
+  for(const k of ['goals','keypoints','front_content','back_content']){
+    result[k]=result[k].trim();
+  }
+  return result;
+}
+
+// ==================== RENDER ENGINE ====================
+function getParams(){
+  const fs=parseInt($('fs-sl').value);
+  const lsmult=parseFloat($('ls-sl').value)/10;
+  const posJitter=parseInt($('pd-sl').value)/100;
+  const strokeJitter=parseInt($('sd-sl').value)/100;
+  const scribbleProb=parseInt($('sc-sl').value)/100;
+  const inkVar=parseInt($('iv-sl').value);
+  const inkMap={blue:'#0f2d8c',blue2:'#1a5abf',black:'#111',red:'#c83232'};
+  const ink=inkMap[$('ink-sel').value]||'#0f2d8c';
+  let ff;
+  if(S.font==='kai')ff="'KaiTi','STKaiti',serif";
+  else if(S.font==='fang')ff="'FangSong',serif";
+  else if(S.font==='hei')ff="'SimHei','Microsoft YaHei',sans-serif";
+  else ff="'KaiTi','STKaiti',serif";
+  return{fs,lsmult,posJitter,strokeJitter,scribbleProb,inkVar,ink,ff};
+}
+
+function getData(){
+  return{
+    title:$('e-title').value,type:$('e-type').value,
+    goals:$('e-goals').value,keypoints:$('e-kp').value,
+    front_content:$('e-front').value,back_content:$('e-back').value
+  };
+}
+
+function doRender(){
+  const t=$('e-title').value||'未命名';
+  if(!$('e-front').value.trim()&&!$('e-back').value.trim()){
+    toast('请先填写教案内容','er');return;
+  }
+  toast('正在渲染 "'+t+'" ...','in');
+  switchTab('render');
+  setTimeout(()=>{
+    renderPage('f');renderPage('b');
+    S.rendered=true;
+    S.frontImgData=$('cv-f').toDataURL('image/png');
+    S.backImgData=$('cv-b').toDataURL('image/png');
+    $('rv-hint').textContent='✅ 渲染完成！可在下方预览，或前往"导出打印"保存。';
+    updateExportGrid();
+    toast('渲染完成！','ok');
+  },50);
+}
+
+function renderPage(side){
+  const cv=$('cv-'+side);const ctx=cv.getContext('2d');
+  drawPage(ctx,cv.width,cv.height,side,getData(),getParams());
+}
+
+function renderPageCanvas(lessonData,side,p){
+  return new Promise(resolve=>{
+    const cv=document.createElement('canvas');
+    cv.width=662;cv.height=936;
+    const ctx=cv.getContext('2d');
+    drawPage(ctx,cv.width,cv.height,side,lessonData,p||getParams());
+    resolve(cv.toDataURL('image/png'));
+  });
+}
+
+// ==================== DRAW PAGE ====================
+function drawPage(ctx,W,H,side,data,p){
+  // Paper background - plain white (no lines!)
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,W,H);
+
+  const lsp=Math.round(H/27*p.lsmult);
+  const sty=Math.round(lsp*1.2);
+  const mx=Math.round(W*0.075); // red margin
+
+  // Subtle red margin
+  ctx.strokeStyle='rgba(200,50,50,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(mx,10);ctx.lineTo(mx,H-10);ctx.stroke();
+
+  const tx=mx+12, mw=W-tx-20;
+
+  if(side==='f'){
+    renderFront(ctx,tx,sty,mw,lsp,p,H,data);
+  }else{
+    renderBack(ctx,tx,sty,mw,lsp,p,H,data);
+  }
+
+  // Scribble marks
+  if(p.scribbleProb>0) drawScribbles(ctx,W,H,mx,sty,lsp,p.scribbleProb,p.ink);
+
+  // Paper texture
+  addTex(ctx,W,H);
+
+  // Edge shadow (binding)
+  const g=ctx.createLinearGradient(0,0,15,0);
+  g.addColorStop(0,'rgba(0,0,0,0.04)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,15,H);
+}
+
+// ==================== RENDER FRONT ====================
+function renderFront(ctx,x,y,mw,lsp,p,H,data){
+  const{fs,ff,ink,posJitter:pj,strokeJitter:sj}=p;
+  let cy=y;
+
+  // Title line
+  ctx.font=`bold ${fs+2}px ${ff}`;
+  dtx(ctx,'课题  '+data.title,x,cy,ink,pj,sj);cy+=lsp;
+  ctx.font=`${fs}px ${ff}`;
+  dtx(ctx,'课型：'+data.type,x,cy,ink,pj,sj);cy+=lsp;
+  // Separator line
+  ctx.strokeStyle=ink;ctx.lineWidth=0.5;ctx.globalAlpha=0.4;
+  ctx.beginPath();ctx.moveTo(x,cy-2);ctx.lineTo(x+mw,cy-2);ctx.stroke();
+  ctx.globalAlpha=1;cy+=lsp*0.5;
+
+  // Teaching goals
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学目标',x,cy,ink,pj,sj);cy+=lsp;
+  ctx.font=`${fs-1}px ${ff}`;
+  const goalLines=wrapText(data.goals,mw-10,ctx);
+  for(const l of goalLines){
+    if(cy>H-40){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+    dtx(ctx,l,x+8,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
+  }
+  cy+=lsp*0.3;
+
+  // Keypoints
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学重难点',x,cy,ink,pj,sj);cy+=lsp;
+  ctx.font=`${fs-1}px ${ff}`;
+  const kpLines=wrapText(data.keypoints,mw-10,ctx);
+  for(const l of kpLines){
+    if(cy>H-40){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+    dtx(ctx,l,x+8,cy,ink,pj,sj);cy+=Math.round(lsp*0.85);
+  }
+  cy+=lsp*0.3;
+
+  // Teaching process
+  ctx.font=`bold ${fs}px ${ff}`;dtx(ctx,'教学过程',x,cy,ink,pj,sj);cy+=lsp;
+  ctx.font=`${fs}px ${ff}`;
+  for(const raw of data.front_content.split('\n')){
+    const s=raw.trim();if(!s){cy+=lsp*0.25;continue;}
+    if(cy>H-30){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+    const hd=/^[一二三四五六七八九十]+[、，,.]/.test(s);
+    const sub=/^（?\d+[）)]/.test(s);
+    const indent=hd?0:(sub?12:8);
+    for(const l of wrapText(s,mw-indent,ctx)){
+      if(cy>H-30){dtx(ctx,'（续背面）',x,cy,ink,pj,sj);return;}
+      ctx.font=hd?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
+      dtx(ctx,l,x+indent,cy,ink,pj,sj);cy+=lsp;
+    }
+    ctx.font=`${fs}px ${ff}`;
+  }
+}
+
+// ==================== RENDER BACK ====================
+function renderBack(ctx,x,y,mw,lsp,p,H,data){
+  const{fs,ff,ink,posJitter:pj,strokeJitter:sj}=p;
+  let cy=y;
+
+  ctx.font=`bold ${fs}px ${ff}`;
+  dtx(ctx,'（续前页）',x,cy,ink,pj,sj);cy+=lsp*1.2;
+
+  const lines=data.back_content.split('\n');
+  for(const raw of lines){
+    const s=raw.trim();
+    if(!s){cy+=lsp*0.25;continue;}
+    if(cy>H-30){dtx(ctx,'（完）',x,cy,ink,pj,sj);return;}
+
+    // Section headers - bold but NO box, just like real handwritten docs
+    const isSection=/^(板书设计|课后反思|教学反思|板书|教后反思|作业设计)/.test(s);
+    const isHeading=/^[五六七八九十][、，,.]/.test(s);
+    
+    if(isSection){
+      cy+=lsp*0.3; // small gap before section
+      ctx.font=`bold ${fs}px ${ff}`;
+      dtx(ctx,s,x,cy,ink,pj,sj);cy+=lsp;
+      ctx.font=`${fs}px ${ff}`;
+      continue;
+    }
+
+    const indent=isHeading?0:8;
+    for(const l of wrapText(s,mw-indent,ctx)){
+      if(cy>H-30){dtx(ctx,'（完）',x,cy,ink,pj,sj);return;}
+      ctx.font=isHeading?`bold ${fs}px ${ff}`:`${fs}px ${ff}`;
+      dtx(ctx,l,x+indent,cy,ink,pj,sj);cy+=lsp;
+    }
+    ctx.font=`${fs}px ${ff}`;
+  }
+}
+
+// ==================== HANDWRITING TEXT ENGINE ====================
+// Character-level variation for realistic handwriting
+function dtx(ctx,text,x,y,color,pj,sj){
+  const pJx=pj*4, pJy=pj*3;
+  const sJit=sj*2.5;
+  let cx=x;
+
+  // Per-character baseline drift (seems like a wave)
+  const basePhase=Math.random()*Math.PI*2;
+
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch===' '){cx+=4;continue;}
+
+    // Position jitter - use seeded randomness per character for consistency
+    const ox=cx+(rand()-0.5)*pJx;
+    const oy=y+(rand()-0.5)*pJy+Math.sin(basePhase+i*0.3)*pj*1.5;
+
+    // Font size micro-variation (±1px)
+    const sizeVar=(rand()-0.5)*pj*2;
+
+    // Stroke disorder: ghost/offset
+    if(sJit>0&&ch.trim()&&rand()<sj*0.25){
+      ctx.globalAlpha=0.12;
+      ctx.fillStyle=color;
+      ctx.fillText(ch,ox+(rand()-0.5)*sJit,oy+(rand()-0.5)*sJit);
+      ctx.globalAlpha=1;
+    }
+
+    // Ink density variation
+    if(pj>0.1){
+      const alpha=0.7+rand()*0.3;
+      ctx.globalAlpha=alpha;
+    }
+
+    ctx.fillStyle=color;
+    ctx.fillText(ch,ox,oy);
+    ctx.globalAlpha=1;
+
+    // Character spacing variation (more natural)
+    const naturalSpacing=ctx.measureText(ch).width;
+    const stretch=0.92+rand()*0.16; // ±8% variation
+    cx+=naturalSpacing*stretch;
+  }
+}
+
+// Simple seeded random for reproducible jitter
+let _seed=42;
+function rand(){_seed=(_seed*16807)%2147483647;return(_seed-1)/2147483646;}
+function resetRand(s){_seed=s||42;}
+
+// ==================== TEXT WRAPPING ====================
+function wrapText(text,maxW,ctx){
+  const result=[];
+  for(const para of text.split('\n')){
+    if(!para.trim()){result.push('');continue;}
+    let line='';
+    for(const ch of para){
+      const test=line+ch;
+      if(ctx.measureText(test).width>maxW&&line){
+        result.push(line);line=ch;
+      }else{line=test;}
+    }
+    if(line)result.push(line);
+  }
+  return result.length?result:[''];
+}
+
+// ==================== PAPER EFFECTS ====================
+function addTex(ctx,W,H){
+  const d=ctx.getImageData(0,0,W,H);
+  for(let i=0;i<d.data.length;i+=4){
+    const n=(Math.random()-0.5)*2.5;
+    d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;
+  }
+  ctx.putImageData(d,0,0);
+}
+
+function drawScribbles(ctx,W,H,mx,sty,lsp,prob,ink){
+  const count=Math.floor(prob*12);
+  for(let i=0;i<count;i++){
+    const sx=mx+15+Math.random()*(W-mx-30);
+    const sy=sty+Math.random()*(H-sty-30);
+    const type=Math.floor(Math.random()*3);
+    ctx.strokeStyle=ink;ctx.lineWidth=0.6+Math.random()*1;
+    ctx.globalAlpha=0.25+Math.random()*0.35;
+    if(type===0){
+      ctx.beginPath();const r=4+Math.random()*8;
+      for(let a=0;a<Math.PI*2;a+=0.3){
+        const rx=sx+Math.cos(a)*r+(Math.random()-0.5)*3;
+        const ry=sy+Math.sin(a)*r+(Math.random()-0.5)*3;
+        a===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);
+      }ctx.stroke();
+    }else if(type===1){
+      ctx.beginPath();ctx.moveTo(sx-6,sy-3);ctx.lineTo(sx+6,sy+3);
+      ctx.moveTo(sx-6,sy+3);ctx.lineTo(sx+6,sy-3);ctx.stroke();
+    }else{
+      ctx.beginPath();
+      for(let dx=-12;dx<12;dx+=2){
+        const wx=sx+dx,wy=sy+Math.sin(dx*0.5)*1.5;
+        dx===-12?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
+      }ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+}
+
+// ==================== EXPORT GRID ====================
+function updateExportGrid(){
+  const el=$('out-grid');
+  if(!S.frontImgData){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:var(--tl);grid-column:1/-1;font-size:12px">暂无已生成的教案</div>';
+    return;
+  }
+  const title=$('e-title').value||'未命名';
+  el.innerHTML=`
+    <div class="oi" onclick="previewModal('f')">
+      <img src="${S.frontImgData}">
+      <div class="nf"><div class="nm">${title}</div><div class="pg">正面</div></div>
+    </div>
+    <div class="oi" onclick="previewModal('b')">
+      <img src="${S.backImgData}">
+      <div class="nf"><div class="nm">${title}</div><div class="pg">背面</div></div>
+    </div>`;
+}
+
+function previewModal(side){
+  const cv=$('pv-cv');const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(side==='f'&&S.frontImgData){
+    const img=new Image();img.onload=()=>ctx.drawImage(img,0,0);img.src=S.frontImgData;
+  }else if(S.backImgData){
+    const img=new Image();img.onload=()=>ctx.drawImage(img,0,0);img.src=S.backImgData;
+  }
+  $('pv-modal').classList.add('on');
+}
+
+function goToExport(){
+  if(S.rendered){switchTab('export');updateExportGrid();}
+  else toast('请先生成预览','er');
+}
+
+// ==================== DOWNLOAD ====================
+function doDownloadPNG(){
+  if(!S.frontImgData){toast('请先生成预览','er');return;}
+  const title=$('e-title').value||'教案';
+  downloadDataURL(S.frontImgData,title+'_正面.png');
+  setTimeout(()=>downloadDataURL(S.backImgData,title+'_背面.png'),500);
+  toast('PNG已下载','ok');
+}
+
+function downloadDataURL(dataUrl,name){
+  const a=document.createElement('a');a.href=dataUrl;a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+
+async function doDownloadPDF(){
+  if(!S.frontImgData){toast('请先生成预览','er');return;}
+  toast('正在生成PDF...','in');
+  try{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    pdf.addImage(S.frontImgData,'PNG',0,0,210,297);
+    pdf.addPage();
+    pdf.addImage(S.backImgData,'PNG',0,0,210,297);
+    pdf.save(($('e-title').value||'教案')+'_手写教案.pdf');
+    toast('PDF已下载！','ok');
+  }catch(e){toast('PDF生成失败: '+e.message,'er');}
+}
+
+// ==================== PRINT SELECTION ====================
+function selPrint(el,mode){
+  document.querySelectorAll('.pi').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');S.printMode=mode;
+}
+
+// ==================== BATCH ====================
+$('import-files').addEventListener('change',async e=>{
+  const files=Array.from(e.target.files);
+  for(const f of files){
+    if(!f.name.endsWith('.docx')&&!f.name.endsWith('.doc')){toast('仅支持 .docx','er');continue;}
+    try{
+      const ab=await f.arrayBuffer();
+      const result=await mammoth.extractRawText({arrayBuffer:ab});
+      const parsed=parseLessonText(result.value);
+      parsed.fileName=f.name;parsed.status='pending';
+      S.batchItems.push(parsed);
+    }catch(err){
+      console.error(err);toast('解析 '+f.name+' 失败: '+err.message,'er');
+    }
+  }
+  e.target.value='';
+  renderBatchList();
+  $('btn-batch-render').disabled=S.batchItems.length===0;
+});
+
+function renderBatchList(){
+  const el=$('batch-list');
+  if(!S.batchItems.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--tl);font-size:12px">暂无导入的教案</div>';return;}
+  el.innerHTML=S.batchItems.map((item,i)=>`
+    <div class="batch-item">
+      <span style="font-size:14px">${item.status==='done'?'✅':item.status==='error'?'❌':'📄'}</span>
+      <span class="name">${item.title||item.fileName}</span>
+      <span class="status ${item.status}">${item.status==='done'?'已完成':item.status==='error'?'失败':'待渲染'}</span>
+      <button class="btn bo" style="padding:3px 6px;font-size:10px" onclick="loadBatchItem(${i})">👁</button>
+      <button class="btn bd" style="padding:3px 6px;font-size:10px" onclick="S.batchItems.splice(${i},1);renderBatchList();">✕</button>
+    </div>`).join('');
+}
+
+function loadBatchItem(i){
+  const item=S.batchItems[i];
+  $('e-title').value=item.title;$('e-type').value=item.type;
+  $('e-goals').value=item.goals;$('e-kp').value=item.keypoints;
+  $('e-front').value=item.front_content;$('e-back').value=item.back_content;
+  switchTab('edit');toast('已加载: '+item.title,'ok');
+}
+
+function clearBatch(){S.batchItems=[];renderBatchList();$('btn-batch-render').disabled=true;$('btn-batch-pdf').disabled=true;}
+
+async function doBatchRender(){
+  if(!S.batchItems.length){toast('请先导入教案文件','er');return;}
+  $('batch-progress').style.display='';
+  $('btn-batch-render').disabled=true;
+  const p=getParams();
+  for(let i=0;i<S.batchItems.length;i++){
+    const item=S.batchItems[i];
+    $('batch-bar').style.width=((i+1)/S.batchItems.length*100)+'%';
+    $('batch-status').textContent=`渲染 ${i+1}/${S.batchItems.length}: ${item.title}`;
+    try{
+      resetRand(i*1000+1);
+      item.frontImg=await renderPageCanvas(item,'f',p);
+      resetRand(i*1000+2);
+      item.backImg=await renderPageCanvas(item,'b',p);
+      item.status='done';
+    }catch(e){item.status='error';console.error(e);}
+    renderBatchList();
+    await new Promise(r=>setTimeout(r,50));
+  }
+  $('batch-status').textContent=`✅ 完成！共渲染 ${S.batchItems.filter(x=>x.status==='done').length} 份`;
+  $('btn-batch-pdf').disabled=false;
+  toast('批量渲染完成！','ok');
+}
+
+async function doBatchPDF(){
+  const done=S.batchItems.filter(x=>x.status==='done');
+  if(!done.length){toast('请先完成批量渲染','er');return;}
+  toast('正在生成PDF...','in');
+  try{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    for(let i=0;i<done.length;i++){
+      const item=done[i];
+      if(i>0)pdf.addPage();
+      if(item.frontImg)pdf.addImage(item.frontImg,'PNG',0,0,210,297);
+      pdf.addPage();
+      if(item.backImg)pdf.addImage(item.backImg,'PNG',0,0,210,297);
+    }
+    pdf.save('教案合集_'+new Date().toLocaleDateString('zh-CN')+'.pdf');
+    toast('PDF已下载！','ok');
+  }catch(e){toast('PDF生成失败: '+e.message,'er');}
+}
+
+// ==================== UTILITIES ====================
+function loadSample(){
+  $('e-title').value='3 天窗';
+  $('e-type').value='新授课';
+  $('e-goals').value='1.认识"慰、藉"等3个生字，会写"慰、藉、瞥"等10个生字，理解"慰藉、威力"等词语。\n2.正确、流利、有感情地朗读课文，理解课文内容，体会"小小的天窗是你唯一的慰藉"这句话的含义。\n3.学习作者运用丰富的想象，把看到的事物写得更具体、更生动的写作方法。';
+  $('e-kp').value='重点：理解课文内容，了解天窗给乡下孩子带来的无尽遐想和快乐。\n难点：理解"小小的天窗是你唯一的慰藉"的含义，体会作者对天窗的特殊感情。';
+  $('e-front').value='一、激趣导入，揭示课题\n1.同学们，你们见过天窗吗？谁知道什么是天窗？\n2.出示天窗图片，简介天窗：天窗是在屋顶开的一个小窗子，用来采光和通风。\n3.板书课题，齐读课题。\n4.质疑：读了课题，你想知道什么？\n二、初读课文，整体感知\n1.自由朗读课文，读准字音，读通句子。\n2.检查生字词认读情况。\n3.默读课文，思考：什么是天窗？天窗在什么时候成为孩子们"唯一的慰藉"？\n三、精读课文，品味语言\n1.学习第1-3自然段\n（1）指名读第1-3自然段。\n（2）说说天窗是什么样子的？为什么要开天窗？\n（3）交流：天窗的位置、样子和作用。\n2.学习第4-7自然段\n（1）默读第4-7自然段，画出表现孩子们心情变化的词句。\n（2）交流：下雨天，孩子们被关在屋里时的心情怎样？透过天窗看到了什么？想到了什么？\n（3）品读重点句子，体会想象的丰富。\n（4）指导朗读，读出孩子们的快乐。\n四、课堂小结\n天窗虽然很小，却给孩子们带来了无穷的快乐和想象。';
+  $('e-back').value='五、学习第8自然段\n1.齐读最后一个自然段。\n2.理解"发明这天窗的大人们，是应得感谢的"这句话的含义。\n3.小结：天窗不仅给了孩子们一个看世界的窗口，更给了他们想象的翅膀。\n六、总结全文，拓展延伸\n1.用自己的话说说课文的主要内容。\n2.体会作者对天窗的感情，感受天窗给孩子们带来的快乐。\n3.拓展：你有没有类似的经历？在无聊或孤独的时候，是什么给了你快乐和想象？\n板书设计\n天窗\n屋子→天窗→想象\n木板窗→天窗→慰藉\n看到的→想到的\n一颗星→无数星\n一朵云→无数云\n一条黑影→蝙蝠、夜莺……\n课后反思\n本课教学中，我注重引导学生抓住关键词句理解课文内容，通过品读、想象、朗读等多种方式感受天窗给孩子们带来的快乐。在教学"想象"这部分内容时，我引导学生展开想象的翅膀，用自己的语言描述透过天窗看到的和想到的内容，激发了学生的学习兴趣。教学效果较好，学生参与度高。不足之处是部分学生对"唯一的慰藉"理解还不够深入，需要在第二课时进一步引导体会。';
+  toast('示例已加载','ok');
+}
+
+function clearForm(){
+  ['e-title','e-type','e-goals','e-kp','e-front','e-back'].forEach(id=>$(id).value='');
+  $('e-type').value='新授课';
+  toast('已清空','ok');
+}
+
+// Batch file drag & drop
+const iz=$('import-zone');
+iz.addEventListener('dragover',e=>{e.preventDefault();iz.style.borderColor='var(--p)';});
+iz.addEventListener('dragleave',()=>iz.style.borderColor='');
+iz.addEventListener('drop',e=>{
+  e.preventDefault();iz.style.borderColor='';
+  if(e.dataTransfer.files.length){$('import-files').files=e.dataTransfer.files;$('import-files').dispatchEvent(new Event('change'));}
+});
+
+// Init
+renderBatchList();
+</script>
+</body>
+</html>
